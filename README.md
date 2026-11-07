@@ -2,7 +2,21 @@
 
 A native DeepSeek Harness plugin for managing companies and their Bot employees. Select a company to see its departments. Open a department to see who reports to whom and which Bots are working. Click an employee to open their Harness conversation.
 
-## Install
+## Desktop app
+
+BotOrgHQ Desktop ships an Electron window, a private Node runtime, DeepSeek Harness, and the BotOrgHQ plugin in one package. It starts DSH on an authenticated local port and opens the workspace in a desktop window. Select BotOrgHQ in the sidebar to view company and department charts. The desktop app uses its own data directory under the operating system's application-data location. Set up your model from inside the app.
+
+Build on the operating system and architecture you want to package. Use Node.js 24.9 or later and npm on the build machine.
+
+```sh
+npm ci
+npm --prefix desktop ci
+npm --prefix desktop run dist
+```
+
+Packages go to `desktop/dist/`. The configured targets are a per-user NSIS installer on Windows, an ad-hoc-signed ZIP on macOS, and a Debian package on Linux. For a development launch, run `npm --prefix desktop run prepare-runtime` followed by `npm --prefix desktop start`.
+
+## Install in an existing DSH
 
 The plugin targets **DeepSeek Harness 0.2.2-rc.1**. The install and department workflow were tested in the DSH Web profile. Building the package requires Node.js 24.9 or newer.
 
