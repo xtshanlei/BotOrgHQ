@@ -2,6 +2,18 @@
 
 A native DeepSeek Harness plugin for managing companies and their Bot employees. Select a company to see its departments. Open a department to see who reports to whom and which Bots are working. Click an employee to open their Harness conversation.
 
+## Desktop downloads
+
+The standalone desktop app includes DeepSeek Harness. See the [v0.2.0 desktop prerelease](https://github.com/xtshanlei/BotOrgHQ/releases/tag/v0.2.0-desktop) or browse [all releases](https://github.com/xtshanlei/BotOrgHQ/releases).
+
+| Platform | Download |
+| --- | --- |
+| macOS (Apple silicon) | [ZIP](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.2.0-desktop/BotOrgHQ-0.2.0-mac-arm64.zip) |
+| macOS (Intel) | [ZIP](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.2.0-desktop/BotOrgHQ-0.2.0-mac-x64.zip) |
+| Windows (x64) | [EXE installer](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.2.0-desktop/BotOrgHQ-0.2.0-win-x64.exe) |
+
+[SHA-256 checksums](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.2.0-desktop/SHA256SUMS.txt)
+
 ## Install
 
 The plugin targets **DeepSeek Harness 0.2.2-rc.1**. The install and department workflow were tested in the DSH Web profile. Building the package requires Node.js 24.9 or newer.
