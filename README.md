@@ -1,54 +1,43 @@
 # BotOrgHQ
 
-**One Chief, multiple AI companies, visible lines of responsibility.**
+A native DeepSeek Harness plugin for managing companies and their Bot employees. Select a company to see its departments. Open a department to see who reports to whom and which Bots are working. Click an employee to open their Harness conversation.
 
-BotOrgHQ is a local operations console for teams of long-lived AI employees. Create a company and give the Chief a goal. The Chief can hire bots, define their roles, set direct managers and assign work. A manager can delegate to its direct reports. The company chart shows each employee's live workload and lets you inspect their assignments and results.
+## Install
 
-## Quick start
-
-Use Node.js 24 or later. The app has zero package dependencies.
+The plugin targets **DeepSeek Harness 0.2.2-rc.1**. The install and department workflow were tested in the DSH Web profile. Building the package requires Node.js 24.9 or newer.
 
 ```sh
-npm start
+npm ci
+npm pack
 ```
 
-Open [http://127.0.0.1:3030](http://127.0.0.1:3030). In **演示模式**, select either sample company and click **运行演示**. Watch the Chief hire a delivery lead and specialist. The lead defines the acceptance criteria and then delegates to the specialist. Click a bot card to see who assigned its task and what it produced.
+In DSH Desktop, open **Plugins → Add plugin** and enter the absolute path of the generated `bot-org-hq-0.2.0.tgz`. Enable it and open **BotOrgHQ** from the sidebar.
 
-For real model execution, copy `.env.example` to `.env`, set `DEEPSEEK_API_KEY` and restart. The default model is `deepseek-flash`. You can set `DEEPSEEK_MODEL` and `PORT` in the same file.
+For DSH Web, run these commands from the checkout using a separate DSH CLI installation. The DSH CLI needs pnpm on PATH.
 
 ```sh
-cp .env.example .env
-# Set DEEPSEEK_API_KEY in .env before starting the app.
-npm start
+dsh plugin --profile web add ./bot-org-hq-0.2.0.tgz
+dsh web
 ```
 
-The DeepSeek mode starts with a separate, empty workspace. Create a company, then try this goal in its Chief panel.
+BotOrgHQ bundles the DS Bot host and UI. If the same profile already runs the original DS Bot plugin, disable its entry in that profile before enabling BotOrgHQ. Each plugin has its own data directory. Existing BotOrgHQ v0.1 SQLite records and existing DS Bot rosters need a separate migration to appear in this version's departments.
 
-> 为公司建立一个研究团队，安排一位研究主管和一位向他汇报的分析师。请主管定义市场研究简报的验收标准，再委派分析师写出调研框架。
+## Create a company
 
-In DeepSeek mode, the current company's relevant roles, instructions and recent results are sent to the [DeepSeek API](https://api-docs.deepseek.com/api/create-chat-completion/). The browser uses the local service, and the API key is read on the server. The demo uses scripted responses and a separate SQLite file.
+You can create companies and departments from the BotOrgHQ panel. **打开集团 Chief** opens the Chief's native conversation. Select a model configured in DSH and describe the organisation or assignment you want.
 
-## What works in v0.1
+> 建立「研究工作室」，设立「研究部」和「出版部」。为研究部创建研究主管，让分析师向研究主管汇报。请研究主管制定验收标准，再把整理证据的工作交给分析师。
 
-| Capability | Implementation |
-| --- | --- |
-| Company portfolio | A single Chief interface switches among independent company workspaces. |
-| Autonomous hiring | The Chief produces a structured plan. The server checks the plan and commits hires, reporting lines and tasks together. |
-| Reporting hierarchy | Each company has one root lead. Hires can report to current employees or other hires in the same plan. Managers can delegate only to direct reports. |
-| Live organisation chart | Server-sent events update the chart for queued, running and failed work. Active employees and their reporting paths animate. |
-| Job history | Results are saved in SQLite. The Chief can review recent company results, and employees receive recent results from their own work and tasks they delegated. |
-| Local execution | The demo runs offline. The DeepSeek mode executes text assignments with the official API. The service listens on loopback and uses one local workspace owner. |
+Chief uses `org_list`, `org_create_company`, `org_create_department`, `org_hire` and `org_delegate`. The first hire in a department becomes its lead. Later hires need a manager in the same department. The Chief can assign work within the specified company. Employees can use organisation assignments for their direct reports. Results return through the upstream Bot handoff.
 
-The chart shows the state of the actual job queue. A manager who has finished its stage is idle while its direct report carries out the next stage. Interrupted work is marked failed after a restart, and queued work resumes.
+The company view shows live counts by department. The department view shows the reporting tree, work status and active tool when available. The panel reads native DS Bot activity about once per second and highlights the reporting path to a working employee.
 
-## Verification
+## Runtime and data
+
+The plugin runs in the DSH host and uses its model settings, credentials and owner-authenticated connection. BotOrgHQ stores the company structure under `$DSH_HOME/bot-org-hq`. Its pinned DS Bot runtime provides Bot sessions, handoffs and the original Bot UI for chat, group chat and memory. Organisation queries and handoffs enforce their company and manager scope. The underlying DS Bot profile still has its shared team memory and other team-wide settings.
 
 ```sh
 npm test
 ```
 
-Tests exercise multi-level hiring, company boundaries, direct-report delegation, transactional rollback, restart recovery, SSE and the model request format. The model integration test uses a stub response.
-
-## Upstream work
-
-The first milestone establishes the company hierarchy and event model. The next milestones cover native DeepSeek Harness execution, direct and group chat, memory review and transport integrations. The [upstream feature map](docs/upstream.md) records what is implemented and what remains for each project.
+See the [upstream integration notes](docs/upstream.md) for attribution and current coverage.

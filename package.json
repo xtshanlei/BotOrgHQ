@@ -1,11 +1,31 @@
 {
   "name": "bot-org-hq",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "Company and department organisation charts for DeepSeek Harness",
+  "keywords": ["dsh-plugin", "deepseek-harness", "multi-agent"],
   "type": "module",
-  "engines": { "node": ">=24" },
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["index.js", "client.js", "src/organisation.mjs", "src/org-store.mjs", "cordis.patch.yml", "third-party"],
+  "engines": { "node": ">=24.9.0", "dsh": "0.2.2-rc.1" },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "external": ["react", "react-dom", "@deepseek-ai/dsh-client-ui-primitives"]
+    },
+    "bundle": { "patch": "./cordis.patch.yml" }
+  },
   "scripts": {
-    "start": "node --env-file-if-exists=.env src/server.mjs",
+    "build": "node scripts/build-client.mjs",
+    "prepack": "npm run build",
     "test": "node --test"
-  }
+  },
+  "dependencies": { "ds-bot": "0.3.1" },
+  "peerDependencies": { "@deepseek-ai/dsh-tools": "*" },
+  "devDependencies": { "esbuild": "0.28.2" }
 }
