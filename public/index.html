@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f7f7f2">
+  <title>BotOrgHQ · 组织工作台</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-org" viewBox="0 0 24 24"><path d="M12 8v4m-7 4v-4h14v4"/><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/></symbol>
+    <symbol id="i-chief" viewBox="0 0 24 24"><path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5m0 8v5h-5m-8 0H3v-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></symbol>
+    <symbol id="i-build" viewBox="0 0 24 24"><path d="M4 21h16M6 21V8l6-5 6 5v13M9 11h1m4 0h1m-6 4h1m4 0h1m-4 6v-3h2v3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="4"/><path d="M12 8V4M2 13v3m20-3v3m-13-2h.01m5.99 0h.01m-4.01 3h2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  </svg>
+
+  <div class="shell">
+    <aside class="sidebar" aria-label="公司导航">
+      <a class="brand" href="/">
+        <span class="brand-icon"><svg class="icon"><use href="#i-org"/></svg></span>
+        <span><strong>BotOrgHQ</strong><small>组织工作台</small></span>
+      </a>
+
+      <a href="#chief" class="chief-nav">
+        <span class="chief-nav-icon"><svg class="icon"><use href="#i-chief"/></svg></span>
+        <span><strong>集团 Chief</strong><small>公司管理与任务编排</small></span>
+        <svg class="icon chief-nav-arrow"><use href="#i-arrow"/></svg>
+      </a>
+
+      <div class="nav-title">
+        <span>我的公司 <span id="company-count" class="nav-count"></span></span>
+        <button type="button" id="nav-create" class="icon-button nav-create" aria-label="新建公司"><svg class="icon"><use href="#i-plus"/></svg></button>
+      </div>
+      <nav id="companies" class="company-nav" aria-label="切换公司"></nav>
+
+      <div class="sidebar-foot">
+        <div class="local-icon"><svg class="icon"><use href="#i-bot"/></svg></div>
+        <span><strong>本地工作区</strong><small>单用户 · SQLite</small></span>
+        <span class="version">V0.1</span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="crumb"><svg class="icon"><use href="#i-org"/></svg><span>工作台</span><span class="slash">/</span><strong id="crumb-company">公司总览</strong></div>
+        <div class="top-pills">
+          <span class="pill mode" id="mode" hidden></span>
+          <span class="pill"><span class="dot" id="connection-dot"></span><span id="connection" role="status">连接中</span></span>
+        </div>
+      </header>
+
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-bar"></span> 公司控制台</p>
+            <h1 id="company-title">公司总览</h1>
+            <p id="company-mission" class="mission">统一管理多家由 Bot 组成的公司。</p>
+          </div>
+          <div class="page-actions">
+            <button class="button" id="run-demo" type="button" hidden><svg class="icon"><use href="#i-play"/></svg>运行演示</button>
+            <button class="button primary" id="create-company" type="button"><svg class="icon"><use href="#i-plus"/></svg>新建公司</button>
+          </div>
+        </div>
+        <p id="global-error" class="error" role="alert" hidden></p>
+
+        <div class="stats" aria-label="公司工作概况">
+          <div class="stat"><span>员工</span><strong id="staff-count">—</strong><small>公司在册 Bot</small></div>
+          <div class="stat"><span>汇报层级</span><strong id="depth-count">—</strong><small>从公司负责人起算</small></div>
+          <div class="stat"><span><i class="dot running"></i> 工作中</span><strong id="active-count">—</strong><small>正在执行的员工</small></div>
+          <div class="stat"><span><i class="dot queued"></i> 待开始</span><strong id="queued-count">—</strong><small>任务队列</small></div>
+        </div>
+
+        <div class="overview">
+          <section class="panel org-panel" aria-labelledby="chart-heading">
+            <div class="panel-head">
+              <div><p class="eyebrow subtle">REPORTING LINES</p><h2 id="chart-heading">组织架构</h2></div>
+              <div class="chart-tools" aria-label="组织图缩放">
+                <button class="icon-button" id="zoom-out" type="button" aria-label="缩小"><svg class="icon"><use href="#i-minus"/></svg></button>
+                <span id="zoom-label">100%</span>
+                <button class="icon-button" id="zoom-in" type="button" aria-label="放大"><svg class="icon"><use href="#i-plus"/></svg></button>
+                <button class="icon-button fit-button" id="zoom-fit" type="button" aria-label="适合窗口"><svg class="icon"><use href="#i-fit"/></svg></button>
+              </div>
+            </div>
+            <div class="chart-viewport" id="viewport" tabindex="0" aria-label="可滚动的组织架构图">
+              <div class="chart-empty" id="chart-empty"><svg class="icon"><use href="#i-org"/></svg><p>新建一家公司，开始搭建团队。</p></div>
+              <div class="chart-space" id="chart-space" hidden>
+                <div class="chart-world" id="chart">
+                  <svg id="edges" aria-hidden="true"></svg>
+                  <div id="nodes"></div>
+                </div>
+              </div>
+            </div>
+            <div class="chart-foot">
+              <div class="legend"><span><i class="dot"></i>空闲</span><span><i class="dot queued"></i>排队</span><span><i class="dot running"></i>工作中</span><span><i class="dot failed"></i>失败</span></div>
+              <span>点击员工查看详情</span>
+            </div>
+          </section>
+
+          <aside class="panel inspector" aria-labelledby="inspector-heading">
+            <div class="panel-head">
+              <div><p class="eyebrow subtle">TEAM DETAILS</p><h2 id="inspector-heading">员工详情</h2></div>
+              <span class="panel-icon"><svg class="icon"><use href="#i-bot"/></svg></span>
+            </div>
+            <div id="inspector" class="inspector-body"><p class="placeholder">选择一名员工。</p></div>
+          </aside>
+        </div>
+
+        <div class="lower">
+          <section class="panel chief-panel" id="chief" aria-labelledby="chief-heading">
+            <div class="panel-head">
+              <div class="chief-heading-wrap">
+                <span class="panel-icon chief-accent"><svg class="icon"><use href="#i-chief"/></svg></span>
+                <div><h2 id="chief-heading">集团 Chief</h2><p id="chief-scope">请选择一家公司</p></div>
+              </div>
+              <span id="chief-status" class="pill" role="status" hidden></span>
+            </div>
+            <div id="messages" class="messages" aria-label="Chief 对话" aria-live="polite"></div>
+            <form id="chief-form" class="composer">
+              <label for="prompt">交给 Chief 的目标</label>
+              <textarea id="prompt" rows="2" maxlength="4000" placeholder="例如：组建一个市场调研部门，让负责人聘用两名分析师并安排初步工作。" required></textarea>
+              <div class="composer-foot">
+                <p id="composer-note">Chief 可以在当前公司内聘用员工并安排文字任务。</p>
+                <button class="button primary" id="send" type="submit" disabled>交给 Chief <svg class="icon"><use href="#i-arrow"/></svg></button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel activity-panel" aria-labelledby="activity-heading">
+            <div class="panel-head">
+              <div><p class="eyebrow subtle">LIVE EVENTS</p><h2 id="activity-heading">公司动态</h2></div>
+              <span class="panel-icon"><svg class="icon"><use href="#i-clock"/></svg></span>
+            </div>
+            <ol id="activity" class="activity-list"></ol>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="create-dialog" aria-labelledby="create-heading">
+    <form id="create-form">
+      <div class="dialog-heading">
+        <div><p class="eyebrow subtle">NEW COMPANY</p><h2 id="create-heading">新建公司</h2></div>
+        <button type="button" id="cancel-create" class="icon-button" aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <label for="company-name">公司名称</label>
+      <input id="company-name" name="name" required maxlength="48" placeholder="例如：AI 研究工作室" autofocus>
+      <label for="new-mission">公司使命</label>
+      <textarea id="new-mission" name="mission" required maxlength="500" rows="3" placeholder="这家公司负责什么？"></textarea>
+      <p id="create-error" class="error" role="alert" hidden></p>
+      <div class="dialog-foot"><button type="submit" id="confirm-create" class="button primary">创建公司 <svg class="icon"><use href="#i-arrow"/></svg></button></div>
+    </form>
+  </dialog>
+</body>
+</html>
