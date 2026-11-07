@@ -1,0 +1,157 @@
+name: BotOrgHQ desktop release
+
+on:
+  push:
+    branches: [desktop-embedded-dsh]
+    paths: [.github/workflows/desktop-release.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            platform: win
+            arch: x64
+            extension: exe
+          - runner: macos-15
+            platform: mac
+            arch: arm64
+            extension: zip
+          - runner: macos-15-intel
+            platform: mac
+            arch: x64
+            extension: zip
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.22.1
+          architecture: ${{ matrix.arch }}
+      - name: Install dependencies and test
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          node -e 'if (process.arch !== process.env.TARGET_ARCH) throw Error("Unexpected runner architecture")'
+          npm ci --no-audit --no-fund
+          npm --prefix desktop ci --no-audit --no-fund
+          npm test
+      - name: Package the desktop app
+        env:
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: npm --prefix desktop run dist -- "--$TARGET_ARCH"
+      - name: Start the embedded DSH from the packaged app
+        env:
+          DSH_TELEMETRY_DISABLED: '1'
+        run: |
+          runtime="$(find desktop/dist -type f \( -path '*/resources/runtime/host.mjs' -o -path '*/Resources/runtime/host.mjs' \) -print -quit)"
+          test -n "$runtime"
+          node --input-type=module - "$(dirname "$runtime")" <<'JS'
+          import assert from 'node:assert/strict';
+          import { mkdtemp, rm } from 'node:fs/promises';
+          import { join, resolve } from 'node:path';
+          import { tmpdir } from 'node:os';
+          import { startEngine } from './desktop/engine.mjs';
+
+          const home = await mkdtemp(join(tmpdir(), 'botorg-release-'));
+          const engine = startEngine(resolve(process.argv[2]), home);
+          try {
+            const url = await engine.ready;
+            const launch = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(20_000) });
+            const cookie = launch.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+            assert(cookie, 'The packaged DSH did not issue a session cookie');
+            const result = await fetch(new URL('/api/bot-org-hq', url), {
+              method: 'POST',
+              headers: { cookie, origin: url.origin, 'content-type': 'application/json' },
+              body: JSON.stringify({ action: 'state' }),
+              signal: AbortSignal.timeout(30_000)
+            });
+            const { value } = await result.json();
+            assert(result.ok && value?.chief?.sessionId, 'BotOrgHQ failed to initialise a Chief session');
+          } finally {
+            await engine.stop();
+            await rm(home, { recursive: true, force: true });
+          }
+          JS
+      - name: Identify the installer
+        id: asset
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          TARGET_ARCH: ${{ matrix.arch }}
+          EXTENSION: ${{ matrix.extension }}
+        run: |
+          version="$(node -p 'require("./desktop/package.json").version')"
+          file="desktop/dist/BotOrgHQ-${version}-${PLATFORM}-${TARGET_ARCH}.${EXTENSION}"
+          test -s "$file"
+          printf 'path=%s\n' "$file" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ steps.asset.outputs.path }}
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    name: Publish the desktop downloads together
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: desktop-*
+          path: assets
+          merge-multiple: true
+      - name: Attach packages and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./desktop/package.json").version')"
+          tag="v${version}-desktop"
+          windows="BotOrgHQ-${version}-win-x64.exe"
+          apple="BotOrgHQ-${version}-mac-arm64.zip"
+          intel="BotOrgHQ-${version}-mac-x64.zip"
+          files=("$windows" "$apple" "$intel")
+          for file in "${files[@]}"; do test -s "assets/$file"; done
+          (cd assets && sha256sum "${files[@]}" > SHA256SUMS.txt)
+          cat > release-notes.md <<EOF
+          Includes the embedded DeepSeek Harness runtime and the BotOrgHQ organisation interface.
+
+          | System | Download |
+          | --- | --- |
+          | Windows x64 | [$windows](https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$windows) |
+          | macOS Apple Silicon | [$apple](https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$apple) |
+          | macOS Intel | [$intel](https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$intel) |
+
+          The Windows installer is unsigned. The macOS apps are ad-hoc signed and are not notarised. Use SHA256SUMS.txt to verify the downloads.
+          EOF
+          if gh release view "$tag" --json isDraft,targetCommitish > release.json 2>/dev/null; then
+            jq -e --arg commit "$GITHUB_SHA" '.isDraft and .targetCommitish == $commit' release.json >/dev/null
+          else
+            gh release create "$tag" --draft --prerelease --target "$GITHUB_SHA" \
+              --title "BotOrgHQ $version Desktop" --notes-file release-notes.md
+          fi
+          gh release upload "$tag" "assets/$windows" "assets/$apple" "assets/$intel" assets/SHA256SUMS.txt --clobber
+          gh release edit "$tag" --draft=false
+          gh release view "$tag" --json url,isDraft,assets --jq '{url,isDraft,assets:[.assets[].name]}'
