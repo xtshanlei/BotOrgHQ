@@ -43,7 +43,7 @@ try {
   await page.getByRole('button', { name: '保存任务', exact: true }).click();
   await page.getByRole('heading', { name: 'Prepare evidence report', exact: true }).waitFor();
   await page.getByRole('button', { name: '查看 / 编辑', exact: true }).click();
-  await page.getByLabel('状态', { exact: true }).selectOption('finished');
+  await page.getByLabel('状态').selectOption('finished');
   await page.getByLabel('实际结果', { exact: true }).fill('Report ready');
   await page.getByLabel('证据及其说明（链接、文件路径、对话或验证记录）', { exact: true }).fill('report.md references three sources');
   await page.getByRole('button', { name: '保存任务', exact: true }).click();
