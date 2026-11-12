@@ -48,6 +48,18 @@ export function apply(ctx, config = {}) {
           case 'create-department':
             organisation.writable();
             return respond({ value: store.createDepartment(input) }, 201);
+          case 'change-reporting':
+            organisation.writable();
+            if (input.managerId && !runtime.botOf(input.managerId)) throw new OrgError('The selected manager no longer exists.');
+            if (!runtime.botOf(input.employeeId)) throw new OrgError('The employee no longer exists.');
+            return respond({ value: store.changeReporting(input) });
+          case 'create-task':
+            organisation.writable();
+            if (input.ownerId && !runtime.botOf(input.ownerId)) throw new OrgError('The selected owner no longer exists.');
+            return respond({ value: store.createTask(input) }, 201);
+          case 'update-task':
+            organisation.writable();
+            return respond({ value: store.updateTask(input) });
           default:
             return respond({ error: 'Unknown BotOrgHQ action.' }, 400);
         }
@@ -59,3 +71,4 @@ export function apply(ctx, config = {}) {
     }
   }), 'BotOrgHQ API');
 }
+

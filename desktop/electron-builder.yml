@@ -1,0 +1,35 @@
+appId: io.github.xtshanlei.botorg-hq
+productName: BotOrgHQ
+artifactName: BotOrgHQ-${version}-${os}-${arch}.${ext}
+directories:
+  output: dist
+files:
+  - main.mjs
+  - engine.mjs
+  - data.mjs
+  - updates.mjs
+  - update-preload.cjs
+  - update.html
+  - update.css
+  - update-ui.js
+  - package.json
+afterPack: ./copy-runtime.mjs
+npmRebuild: false
+win:
+  target: nsis
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  deleteAppDataOnUninstall: false
+mac:
+  target: zip
+  identity: '-'
+linux:
+  target: deb
+  executableName: botorg-hq
+  maintainer: BotOrgHQ contributors <https://github.com/xtshanlei/BotOrgHQ>
+  category: Utility
+deb:
+  compression: gz
+

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './client.css';
+import { ReportingForm, TaskBoard } from './task-board.jsx';
 
 export const inject = ['slots', 'uiWorkspace'];
 const panelId = 'bot-org-hq';
@@ -72,7 +73,7 @@ function EmployeeBranch({ employee, childrenByManager, activePath, openSession }
   </li>;
 }
 
-function EmployeeChart({ department, openSession }) {
+function EmployeeChart({ company, department, openSession }) {
   if (!department.employees.length) return <p className="bohq-empty">这个部门还没有员工。请 Chief 先聘用部门负责人，再为负责人安排直属下属。</p>;
   const byId = new Map(department.employees.map(employee => [employee.id, employee]));
   const childrenByManager = new Map();
@@ -88,9 +89,12 @@ function EmployeeChart({ department, openSession }) {
   }
   return <div className="bohq-canvas" tabIndex="0" aria-label="员工汇报层级">
     <ul className="bohq-tree">
-      {(childrenByManager.get(null) ?? []).map(employee =>
-        <EmployeeBranch key={employee.id} employee={employee} childrenByManager={childrenByManager} activePath={activePath} openSession={openSession} />
-      )}
+      {department.employees.filter(employee => !byId.has(employee.managerId)).map(employee => {
+        const managerDepartment = company.departments.find(item => item.employees.some(manager => manager.id === employee.managerId));
+        const manager = managerDepartment?.employees.find(item => item.id === employee.managerId);
+        return <li key={employee.id}>{manager && <div className="bohq-root"><button onClick={() => openSession(manager.sessionId)}>直属上级 · {manager.name} · {managerDepartment.name} ↗</button></div>}
+          <ul><EmployeeBranch employee={employee} childrenByManager={childrenByManager} activePath={activePath} openSession={openSession} /></ul></li>;
+      })}
     </ul>
   </div>;
 }
@@ -118,6 +122,7 @@ function OrganisationPanel({ openSession }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [connectionError, setConnectionError] = useState('');
+  const [tab, setTab] = useState('organisation');
   const refreshId = useRef(0);
 
   async function refresh(signal) {
@@ -154,6 +159,22 @@ function OrganisationPanel({ openSession }) {
   const company = view?.companies.find(item => item.id === current.companyId) ?? view?.companies[0];
   const department = company?.departments.find(item => item.id === current.departmentId);
   const chief = view?.chief;
+  const disabled = !view || !!view.readOnly || saving;
+
+  async function mutate(action, fields) {
+    setError('');
+    setSaving(true);
+    try {
+      await call(action, fields);
+      await refresh();
+      return true;
+    } catch (error) {
+      setError(error.message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function submit(fields) {
     setError('');
@@ -190,13 +211,17 @@ function OrganisationPanel({ openSession }) {
         <div className="bohq-actions">
           <button disabled={!view || !!view.readOnly || saving} onClick={() => { setError(''); setCreate('company'); }}>＋ 新建公司</button>
           {company && <button disabled={!!view.readOnly || saving} onClick={() => { setError(''); setCreate('department'); }}>＋ 新建部门</button>}
+          {company && <button disabled={disabled} onClick={() => { setError(''); setCreate('reporting'); }}>修改部门 / 直属关系</button>}
         </div>
       </div>
-      {create && <CreateForm key={create} kind={create} submit={submit} cancel={() => { setCreate(null); setError(''); }} saving={saving} />}
+      {create === 'reporting' && <ReportingForm key={company.id} company={company} disabled={disabled} mutate={mutate} cancel={() => setCreate(null)} />}
+      {create && create !== 'reporting' && <CreateForm key={create} kind={create} submit={submit} cancel={() => { setCreate(null); setError(''); }} saving={saving} />}
       {error && <p className="bohq-error" role="alert">{error}</p>}
       {!view && !connectionError && <p role="status">正在加载组织架构…</p>}
       {view && !company && <p className="bohq-empty">新建公司，或在 Chief 对话里让它创建公司和部门。</p>}
-      {company && <section className="bohq-panel" aria-label={department ? '部门员工' : '部门架构'}>
+      {company && <nav className="bohq-tabs" aria-label="公司视图"><button aria-pressed={tab === 'organisation'} onClick={() => setTab('organisation')}>组织架构</button><button aria-pressed={tab === 'tasks'} onClick={() => setTab('tasks')}>任务看板</button></nav>}
+      {company && tab === 'tasks' && <TaskBoard key={company.id} company={company} disabled={disabled} mutate={mutate} openSession={openSession} />}
+      {company && tab === 'organisation' && <section className="bohq-panel" aria-label={department ? '部门员工' : '部门架构'}>
         <header className="bohq-panel-head">
           <div>
             {department && <button className="bohq-back" onClick={() => select(company.id)}>← 返回部门架构</button>}
@@ -206,7 +231,7 @@ function OrganisationPanel({ openSession }) {
           <span className="bohq-chip">{department ? department.employees.length + ' 名员工' : company.departments.length + ' 个部门'}</span>
         </header>
         {department
-          ? <EmployeeChart department={department} openSession={openSession} />
+          ? <EmployeeChart company={company} department={department} openSession={openSession} />
           : <DepartmentChart company={company} openDepartment={id => select(company.id, id)} />}
       </section>}
       <p className="bohq-note">在 Chief 对话中说明公司、部门、岗位和汇报对象，即可由 Chief 创建员工并安排工作。</p>
@@ -228,3 +253,4 @@ export function apply(ctx) {
     name: 'sidebar.panellist', id: panelId, order: 15, label: 'BotOrgHQ'
   }, Icon));
 }
+

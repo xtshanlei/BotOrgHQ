@@ -1,0 +1,23 @@
+{
+  "name": "botorg-hq-desktop",
+  "productName": "BotOrgHQ",
+  "version": "0.3.0",
+  "private": true,
+  "description": "BotOrgHQ desktop app with embedded DeepSeek Harness",
+  "homepage": "https://github.com/xtshanlei/BotOrgHQ",
+  "author": "BotOrgHQ contributors",
+  "type": "module",
+  "main": "main.mjs",
+  "engines": { "node": ">=24.9.0" },
+  "scripts": {
+    "prepare-runtime": "node prepare-runtime.mjs",
+    "start": "electron .",
+    "pack": "npm run prepare-runtime && electron-builder --dir --publish never",
+    "dist": "npm run prepare-runtime && electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.17.0"
+  }
+}
+

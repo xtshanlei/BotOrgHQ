@@ -7,3 +7,7 @@ client.js
 *.sqlite
 *.sqlite-*
 .DS_Store
+/desktop/runtime/
+/desktop/.runtime-*/
+/desktop/dist/
+

@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>BotOrgHQ 更新</title><link rel="stylesheet" href="update.css"></head>
+<body><main><p class="brand">BotOrgHQ</p><h1>软件更新</h1><p id="version"></p><p id="message" role="status" aria-live="polite"></p>
+<progress id="progress" max="100" hidden></progress>
+<div class="actions"><button id="check">检查更新</button><button id="download" hidden>下载更新</button><button id="install" hidden>备份并安装更新</button></div>
+<p class="note">升级继续使用原来的数据目录。安装前会备份 DSH 的配置、Bot、公司、部门、任务、对话和记忆。</p><button id="backups">打开备份文件夹</button>
+<details><summary>私有 GitHub 仓库访问</summary><p>私有仓库需要具有 BotOrgHQ 仓库 Contents 读取权限的 GitHub Token。公开仓库可以留空。</p>
+<label>GitHub Token<input id="token" type="password" autocomplete="off" placeholder="留空并保存可清除 Token"></label><button id="save-token">加密保存 Token</button><p id="token-state" role="status"></p></details>
+</main><script src="update-ui.js"></script></body></html>

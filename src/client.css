@@ -26,7 +26,7 @@
 .bohq-kicker, .bohq-root { display: flex; align-items: center; gap: 7px; color: var(--bohq-accent); }
 .bohq-kicker { font-weight: 700; }
 .bohq-muted, .bohq-panel-head p, .bohq-note { color: var(--bohq-muted); }
-.bohq button, .bohq select, .bohq input {
+.bohq button, .bohq select, .bohq input, .bohq textarea {
   color: var(--bohq-ink); font: inherit; background: var(--bohq-card);
   border: 1px solid var(--bohq-line); border-radius: 8px; padding: 7px 11px;
 }
@@ -86,5 +86,27 @@
 .bohq .bohq-empty { padding: 28px 18px; color: var(--bohq-muted); }
 .bohq .bohq-error { margin: 8px 0 14px; color: light-dark(#912e2a, #f69a91); }
 .bohq .bohq-note { margin-top: 14px; font-size: 12px; }
+.bohq-tabs { display: flex; gap: 8px; margin: 16px 0; }
+.bohq-tabs [aria-pressed="true"] { border-color: var(--bohq-accent); background: var(--bohq-accent-fill); }
+.bohq-board { display: grid; grid-template-columns: repeat(5, minmax(230px, 1fr)); gap: 12px; padding: 16px; overflow-x: auto; align-items: start; }
+.bohq-column { min-width: 0; padding: 12px; border-radius: 10px; background: var(--bohq-surface); }
+.bohq-column h3 { display: flex; justify-content: space-between; font-size: 14px; margin: 0 0 16px; }
+.bohq-column h3 span { color: var(--bohq-muted); }
+.bohq-task { padding: 12px; margin: 12px 0; border: 1px solid var(--bohq-line); border-radius: 9px; background: var(--bohq-card); overflow-wrap: anywhere; }
+.bohq-task h4 { margin: 0 0 8px; }
+.bohq-task p, .bohq-task dl { font-size: 12px; }
+.bohq-task dt { font-size: 11px; color: var(--bohq-muted); margin-top: 10px; }
+.bohq-task dd { margin: 3px 0 0; white-space: pre-wrap; }
+.bohq-task .bohq-actions { margin: 14px 0; }
+.bohq-task button { font-size: 12px; padding: 5px 7px; }
+.bohq-task details { font-size: 11px; color: var(--bohq-muted); }
+.bohq-task details p { white-space: pre-wrap; }
+.bohq-task summary { cursor: pointer; }
+.bohq-task ol { padding-left: 18px; }
+.bohq-task li { margin: 8px 0; }
+.bohq-task-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin: 16px; }
+.bohq-full { grid-column: 1 / -1; }
+.bohq textarea { resize: vertical; width: 100%; box-sizing: border-box; }
 @media (max-width: 650px) { .bohq-content { padding: 18px 12px 24px; } }
 @media (prefers-reduced-motion: reduce) { .bohq-status i { animation: none !important; } }
+

@@ -1,0 +1,16 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: light-dark(#f6f8f4, #161d1a); color: light-dark(#1d2b23, #edf5ef); }
+main { padding: 30px; max-width: 620px; margin: auto; }
+.brand { font-weight: 700; color: light-dark(#21694c, #83d8ae); }
+h1 { margin: 10px 0; font-size: 28px; }
+p { line-height: 1.65; overflow-wrap: anywhere; }
+button, input { font: inherit; padding: 9px 12px; border-radius: 8px; border: 1px solid light-dark(#c8d7cc, #506657); background: light-dark(white, #212b26); color: inherit; }
+button { cursor: pointer; } button:disabled { opacity: .5; cursor: default; }
+.actions { display: flex; gap: 10px; margin: 20px 0; }
+#download, #install { background: #21694c; color: white; }
+.note, details { font-size: 13px; color: light-dark(#59685e, #a6b6ab); }
+progress { width: 100%; accent-color: #21694c; }
+details { border-top: 1px solid #88988860; margin-top: 25px; padding-top: 18px; }
+summary { cursor: pointer; }
+label { display: grid; gap: 7px; margin-bottom: 12px; }
+[hidden] { display: none !important; }

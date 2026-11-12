@@ -1,6 +1,6 @@
 {
   "name": "bot-org-hq",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Company and department organisation charts for DeepSeek Harness",
   "keywords": ["dsh-plugin", "deepseek-harness", "multi-agent"],
@@ -12,7 +12,7 @@
     "./package.json": "./package.json"
   },
   "files": ["index.js", "client.js", "src/organisation.mjs", "src/org-store.mjs", "cordis.patch.yml", "third-party"],
-  "engines": { "node": ">=24.9.0", "dsh": "0.2.2-rc.1" },
+  "engines": { "node": ">=24.9.0", "dsh": "0.2.2-rc.2" },
   "dsh": {
     "client": {
       "platform": "web",
@@ -29,3 +29,4 @@
   "peerDependencies": { "@deepseek-ai/dsh-tools": "*" },
   "devDependencies": { "esbuild": "0.28.2" }
 }
+

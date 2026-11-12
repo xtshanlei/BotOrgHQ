@@ -53,3 +53,4 @@ const lines = [
   ''
 ];
 await writeFile(new URL('../client.js', import.meta.url), lines.join('\n'));
+
