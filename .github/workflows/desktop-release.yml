@@ -3,7 +3,7 @@ name: BotOrgHQ desktop release
 on:
   push:
     branches: [main]
-    paths: [desktop/package.json, scripts/smoke-ui.mjs]
+    paths: [desktop/package.json, scripts/smoke-ui.mjs, .github/workflows/desktop-release.yml]
   workflow_dispatch:
 
 permissions:
