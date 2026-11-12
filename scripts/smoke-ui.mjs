@@ -8,14 +8,18 @@ const { chromium } = createRequire(process.env.PLAYWRIGHT_PACKAGE_JSON ?? import
 const home = await mkdtemp(join(tmpdir(), 'bohq-ui-'));
 const engine = startEngine(new URL('../desktop/runtime', import.meta.url).pathname, home);
 let browser;
+let page;
 try {
   const url = await engine.ready;
   browser = await chromium.launch({ args: ['--no-sandbox'] });
-  const page = await browser.newPage({ viewport: { width: 1450, height: 1000 } });
+  page = await browser.newPage({ viewport: { width: 1450, height: 1000 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(url.href);
   await page.waitForTimeout(2500);
+  await page.keyboard.press('Escape');
+  const close = page.getByRole('button', { name: /^(Close|关闭)( dialog|对话框)?$/i });
+  if (await close.first().isVisible()) await close.first().click();
   page.setDefaultTimeout(30_000);
   const shortcut = page.getByRole('button', { name: 'BotOrgHQ', exact: true });
   if (await shortcut.count()) await shortcut.first().click();
@@ -42,6 +46,9 @@ try {
   await page.screenshot({ path: process.env.RUNNER_TEMP + '/taskboard-verified.png', fullPage: true });
   assert.deepEqual(errors, []);
   console.log('Browser create company, department, task, finish with evidence, and five board columns passed.');
+} catch (error) {
+  if (page && !page.isClosed()) console.log('Workspace screen at failure', (await page.locator('body').innerText()).slice(0, 6000));
+  throw error;
 } finally {
   await browser?.close();
   await engine.stop();
