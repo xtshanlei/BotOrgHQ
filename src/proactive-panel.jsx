@@ -181,7 +181,7 @@ function Approvals({ data, perform, disabled }) {
   </article>);
 }
 
-function Activities({ opportunities, runs, activity, notifications, goals, perform, send, disabled }) {
+function Activities({ company, opportunities, runs, activity, notifications, goals, perform, send, disabled }) {
   return <>
     <div className="bohq-pro-toolbar">
       {['jsonl', 'csv'].map(format => <button key={format} onClick={async () => {
@@ -210,6 +210,13 @@ function Activities({ opportunities, runs, activity, notifications, goals, perfo
         {selectField('verdict', '证据复核', [['passed', '通过'], ['failed', '未通过'], ['inconclusive', '证据不足']])}
         {textField('reason', '理由或复核证据', '', { required: true, maxLength: 2200 })}
         <button disabled={disabled}>保存复核</button>
+      </form>}
+      {run.kind === 'work' && run.attempt === 0 && ['queued', 'waiting_dependency', 'paused'].includes(run.status) && <form className="bohq-form" onSubmit={event => {
+        event.preventDefault();
+        void perform('workflow', { id: run.id, operation: 'reassign', employeeId: new FormData(event.currentTarget).get('employeeId') });
+      }}>
+        {selectField('employeeId', '调整负责人', company.departments.flatMap(dep => dep.employees.map(employee => [employee.id, dep.name + ' / ' + employee.name])), run.actorId)}
+        <button disabled={disabled}>保存负责人</button>
       </form>}
       {!['succeeded', 'cancelled', 'failed', 'timed_out'].includes(run.status) && <div className="bohq-actions">
         {(run.status === 'paused' ? [['resume', '恢复'], ['cancel', '取消']] : [['pause', '暂停'], ['cancel', '取消']])
@@ -260,7 +267,7 @@ export function ProactivePanel({ kind, company, call, disabled }) {
       {actual && kind === 'trigger' && <Triggers company={company} data={actual} goals={data.goal.records} perform={perform} disabled={off} />}
       {actual && kind === 'policy' && <PolicyForm company={company} data={actual} perform={perform} disabled={off} />}
       {actual && kind === 'approval' && (actual.records.length ? <Approvals data={actual} perform={perform} disabled={off} /> : <p>没有审批记录。</p>)}
-      {actual && kind === 'opportunity' && <Activities opportunities={actual.records} runs={data.runs.records} activity={data.activity.records}
+      {actual && kind === 'opportunity' && <Activities company={company} opportunities={actual.records} runs={data.runs.records} activity={data.activity.records}
         notifications={data.notification.records} goals={data.goal.records} perform={perform} send={send} disabled={off} />}
       {actual && kind === 'metrics' && <dl className="bohq-metrics">
         <dt>引擎</dt><dd>{actual.engine} · 本机运行，随宿主退出或休眠而停止调度</dd>

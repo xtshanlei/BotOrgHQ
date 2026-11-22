@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { BlockAssembler, createUserMessage } from '@deepseek-ai/dsh-llm';
@@ -48,8 +49,23 @@ function page(records, cursor, limit) {
   return { records, next: records.length === limit ? cursor(records.at(-1)) : null };
 }
 
-export function installProactive(ctx, home, runtime, organisation) {
+export function installProactive(ctx, home, dshHome, runtime, organisation) {
   const db = new JobStore(join(home, 'proactive.sqlite'));
+  const importMarker = join(dshHome, '.botorghq-import-pause');
+  if (existsSync(importMarker)) {
+    db.transaction(() => {
+      for (const policy of db.all('policy').filter(item => item.id === 'company')) {
+        db.put('policy', policy.companyId, 'company', { ...policy, stopped: true, revision: policy.revision + 1 });
+      }
+      for (const job of db.active()) {
+        db.updateJob(job, { status: 'paused', reason: 'profile_imported', leaseOwner: null, leaseUntil: null });
+      }
+      for (const approval of db.all('approval').filter(item => ['pending', 'approved'].includes(item.status))) {
+        db.put('approval', approval.companyId, approval.id, { ...approval, status: 'invalidated', reason: 'profile_imported' });
+      }
+    });
+    rmSync(importMarker);
+  }
   const company = id => {
     const snapshot = organisation.snapshot();
     const found = snapshot.companies.find(value => value.id === id);
@@ -171,6 +187,21 @@ export function installProactive(ctx, home, runtime, organisation) {
     throw new OrgError('Unknown proactive action.');
   }
 
+  function employeeState(companyId) {
+    const jobs = db.active(companyId).filter(job => job.actorId);
+    const triggers = db.all('trigger', companyId).filter(trigger => trigger.enabled && trigger.nextAt !== null);
+    const states = {};
+    for (const job of jobs) {
+      const status = job.status === 'waiting_approval' ? 'waiting_approval' : job.status === 'running' ? (job.kind === 'plan' ? 'reasoning' : 'working')
+        : job.status === 'paused' ? 'paused' : job.status === 'waiting_dependency' ? 'blocked' : 'monitoring';
+      const state = { status: service.suspended ? 'offline' : status,
+        workflowRunId: job.id, goalId: job.goalId, task: job.task?.title, approvalId: job.approvalId,
+        nextAt: triggers.find(trigger => trigger.actorId === job.actorId)?.nextAt };
+      if (!states[job.actorId] || job.status === 'running') states[job.actorId] = state;
+    }
+    return states;
+  }
+
   function projectTasks(companyId) {
     return db.jobs(companyId, 1000).filter(job => job.kind === 'work').map(job => ({
       ...job.task, id: job.id, workflowRunId: job.id, ownerId: job.actorId, goalId: job.goalId, parentTaskId: job.parentTaskId,
@@ -201,7 +232,9 @@ export function installProactive(ctx, home, runtime, organisation) {
             if (size > 256 * 1024) { res.writeHead(413).end(); return; }
             chunks.push(chunk);
           }
-          const value = verifyWebhook({ trigger, raw: Buffer.concat(chunks), headers: new Headers(req.headers),
+          const current = db.get('trigger', trigger.companyId, trigger.id);
+          if (!current?.enabled || current.revision !== trigger.revision || !db.leads(service.id)) throw new OrgError('Webhook authorisation changed.');
+          const value = verifyWebhook({ trigger: current, raw: Buffer.concat(chunks), headers: new Headers(req.headers),
             secret: process.env[trigger.secretEnv], now: service.clock() });
           const { duplicate } = service.recordEvent(trigger.companyId, { ...value, goalId: trigger.goalId, actorId: trigger.actorId });
           res.writeHead(duplicate ? 200 : 202).end();
@@ -236,5 +269,5 @@ export function installProactive(ctx, home, runtime, organisation) {
       finally { db.close(); }
     };
   }, 'BotOrgHQ proactive autonomy');
-  return { action, projectTasks, service };
+  return { action, projectTasks, employeeState, service };
 }

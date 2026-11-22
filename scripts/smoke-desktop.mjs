@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { startEngine } from '../desktop/engine.mjs';
 import { backupData } from '../desktop/data.mjs';
+import { exportProfile, importProfile } from '../desktop/profile-transfer.mjs';
 
 const runtime = resolve(process.argv[2] ?? 'desktop/runtime');
 const home = await mkdtemp(join(tmpdir(), 'botorg-smoke-'));
@@ -32,7 +33,24 @@ try {
   const department = await call('create-department', { companyId: company.id, name: 'Evidence' });
   const task = await call('create-task', { companyId: company.id, title: 'Verify retained state', expectedResult: 'Saved record', acceptanceCriteria: 'Survives restart', requestId: 'restart-test' });
   await call('update-task', { companyId: company.id, taskId: task.id, revision: task.revision, status: 'finished', result: 'Persisted', evidence: 'Native host smoke test' });
-  await engine.stop();
+  const query = (kind) => call('proactive:list', { companyId: company.id, kind });
+  assert.equal((await query('policy')).defaults.mode, 'OFF');
+  await call('proactive:policy', { companyId: company.id, value: { revision: 0, mode: 'SUGGEST', allowedTools: [] } });
+  const goal = await call('proactive:goal', { companyId: company.id, value: {
+    title: 'Persistent goal', intent: 'Keep native data', successCriteria: 'Survives restart', status: 'active'
+  } });
+  await call('proactive:trigger', { companyId: company.id, value: {
+    type: 'heartbeat', name: 'Persistent trigger', goalId: goal.id, intervalMinutes: 5
+  } });
+  assert.equal((await query('trigger')).records[0].type, 'heartbeat');
+  const shutdown = await engine.stop();
+  assert(!shutdown.forced, 'Normal host shutdown must release the SQLite worker');
+  const archive = join(home, 'profile.bohq');
+  const password = 'smoke-test-recovery-password';
+  await exportProfile(join(home, 'dsh'), archive, password);
+  const importedHome = join(home, 'fresh-import');
+  await importProfile(importedHome, archive, password);
+  assert((await readFile(join(importedHome, 'bot-org-hq', 'proactive.sqlite'))).length > 0);
   const backup = await backupData(home, '0.3.0', 'smoke-test');
   assert.equal(JSON.parse(await readFile(join(backup, 'dsh', 'bot-org-hq', 'organisation.json'), 'utf8')).tasks[0].status, 'finished');
   call = await boot();
@@ -41,6 +59,7 @@ try {
   assert.equal(recovered.companies[0].id, company.id);
   assert.equal(recovered.companies[0].departments[0].id, department.id);
   assert.equal(recovered.companies[0].tasks[0].status, 'finished');
+  assert.equal((await call('proactive:list', { companyId: company.id, kind: 'goal' })).records[0].id, goal.id);
   console.log('Packaged DSH, Chief, task API, backup and restart checks passed.');
 } finally {
   await engine?.stop();

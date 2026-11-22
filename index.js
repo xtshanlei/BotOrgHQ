@@ -15,7 +15,7 @@ export function apply(ctx, config = {}) {
   const store = new OrgStore(join(home, 'organisation.json'));
   const organisation = createOrganisation(runtime, store);
   organisation.registerTools();
-  const proactive = installProactive(ctx, home, runtime, organisation);
+  const proactive = installProactive(ctx, home, dshHome, runtime, organisation);
   ctx.effect(() => ctx.tools.guard(organisation.guardMessage), 'BotOrgHQ direct message scope');
 
   ctx.effect(() => ctx.systemPrompt.section({
@@ -53,7 +53,11 @@ export function apply(ctx, config = {}) {
             if (!runtime.readOnly() && !runtime.state.mainBotIds.length) await runtime.bootstrap();
             {
               const value = organisation.snapshot();
-              for (const company of value.companies) company.tasks.push(...proactive.projectTasks(company.id));
+              for (const company of value.companies) {
+                company.tasks.push(...proactive.projectTasks(company.id));
+                const states = proactive.employeeState(company.id);
+                for (const department of company.departments) for (const employee of department.employees) employee.proactive = states[employee.id];
+              }
               return respond({ value });
             }
           case 'create-company':

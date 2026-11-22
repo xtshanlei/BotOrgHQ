@@ -213,7 +213,7 @@ export class ProactiveService {
       const fresh = now - event.timestamp <= MAX_AGE;
       for (const goalId of fresh ? targets : []) {
         const goal = this.db.get('goal', event.companyId, goalId);
-        if (!goalReady(this.db, goal, now)) continue;
+        if (!goalReady(this.db, goal, now) || (event.source !== 'goal-review' && event.heartbeat && goal.nextReviewAt > now)) continue;
         if (event.actorId && event.actorId !== company.chiefId && goal.ownerId !== event.actorId) continue;
         const policy = this.policy(event.companyId, company.chiefId, goal.departmentId);
         if (event.actorId && this.policy(event.companyId, event.actorId).mode === 'OFF') continue;
@@ -328,7 +328,8 @@ export class ProactiveService {
       if (!leased) continue;
       this.lastCompany = company;
       const controller = new AbortController();
-      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(policy.maxWallClockPerRun)]);
+      const remaining = policy.maxWallClockPerRun - (leased.modelMs ?? 0);
+      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(Math.max(1, remaining))]);
       const promise = this.execute(leased, signal).catch(error => this.failed(leased, error, signal))
         .finally(() => this.inflight.delete(leased.id));
       this.inflight.set(leased.id, { controller, promise });
@@ -405,6 +406,7 @@ export class ProactiveService {
     const usage = this.db.db.prepare('SELECT coalesce(sum(tool),0) tools FROM usage WHERE job=? AND scope=?')
       .get(job.id, 'company');
     if (!reason && usage.tools >= policy.maxToolCallsPerRun) reason = 'tool_budget';
+    if (!reason && (current.modelMs ?? 0) >= policy.maxWallClockPerRun) reason = 'wall_clock_budget';
     for (const [scopeId, cap] of policy.limits) {
       if (reason) break;
       const hour = this.db.totals(job.companyId, scopeId, now - 60 * minute);
@@ -493,7 +495,12 @@ export class ProactiveService {
     if (!step) return null;
     signal.throwIfAborted();
     const started = this.clock();
-    const result = await this.model.complete({ actorId: job.actorId, system, payload, maxTokens: MAX_OUTPUT, signal });
+    let result;
+    try { result = await this.model.complete({ actorId: job.actorId, system, payload, maxTokens: MAX_OUTPUT, signal }); }
+    finally {
+      const current = this.db.job(job.id);
+      if (current?.leaseOwner === this.id) this.checkpoint(job, { modelMs: (current.modelMs ?? 0) + (this.clock() - started) });
+    }
     signal.throwIfAborted();
     this.db.transaction(() => {
       const reported = Number.isSafeInteger(result.tokens) && result.tokens >= 0 ? result.tokens : 0;
@@ -523,6 +530,11 @@ export class ProactiveService {
         id: item.id, kind: 'company-task', text: JSON.stringify({ title: item.title, result: item.result, evidence: item.evidence }).slice(0, 850),
         hash: digest([item.result, item.evidence])
       })));
+    }
+    if (job.scope === 'company') {
+      result.push(...this.db.list('memory', job.companyId, { limit: 4 })
+        .filter(item => !item.expiresAt || item.expiresAt > this.clock())
+        .map(item => ({ id: item.id, kind: 'confirmed-memory', text: item.content.slice(0, 1000), hash: digest(item) })));
     }
     return result;
   }
@@ -564,7 +576,8 @@ export class ProactiveService {
         goal: { title: goal.title, intent: goal.intent, criteria: goal.successCriteria, constraints: goal.constraints, nextAction: goal.nextAction,
           indicators: goal.measurableIndicators, progress: goal.progress, priority: goal.priority, deadline: goal.deadline },
         event: event && { type: event.type, data: event.payload, external: event.trustLevel === 'external' },
-        configuredCapabilities: this.policyFor(job).allowedTools, roster, recent
+        configuredCapabilities: this.policyFor(job).allowedTools, roster, recent,
+        relevantEvidence: this.scopeEvidence(job, event).map(({ id, kind, text }) => ({ id, kind, text }))
       }, signal);
     if (!output || signal.aborted) return;
     const decision = DECISIONS.includes(output.decision) ? output.decision : 'IGNORE';
@@ -690,9 +703,26 @@ export class ProactiveService {
 
   control(company, input) {
     const job = this.db.job(input.id);
-    if (!job || job.companyId !== company || !['pause', 'resume', 'cancel'].includes(input.operation)) throw new OrgError('Workflow or action not found.');
+    if (!job || job.companyId !== company || !['pause', 'resume', 'cancel', 'reassign'].includes(input.operation)) throw new OrgError('Workflow or action not found.');
     return this.db.transaction(() => {
       const current = this.db.job(input.id);
+      if (input.operation === 'reassign') {
+        if (current.kind !== 'work' || current.attempt !== 0 || !['queued', 'waiting_dependency', 'paused'].includes(current.status)) {
+          throw new OrgError('Only work that has not started can be reassigned.');
+        }
+        const employee = this.company(company).employees.find(item => item.id === input.employeeId);
+        const goal = this.db.get('goal', company, current.goalId);
+        if (!employee || !goalReady(this.db, goal, this.clock()) || goal.version !== current.goalVersion) throw new OrgError('Employee or goal is unavailable.');
+        const policy = this.policy(company, employee.id, goal.departmentId);
+        const denied = WORK_TOOLS.some(tool => {
+          const status = admit(policy, tool, tool === 'task.result.submit' ? 'company' : current.scope);
+          return status && status !== 'approval_required';
+        });
+        if (denied) throw new OrgError('The new employee does not have the required authority.');
+        this.db.trace(company, current.traceId, 'workflow.reassigned', { jobId: current.id, actorId: 'owner' });
+        return this.db.updateJob(current, { actorId: employee.id, task: { ...current.task, employeeId: employee.id, departmentId: employee.departmentId },
+          ownerLocked: true, policyHash: policy.fingerprint, status: current.dependencies.length ? 'waiting_dependency' : 'queued', reason: null });
+      }
       if (input.operation === 'resume') {
         if (current.status !== 'paused' || !this.current(current).valid || current.reason === 'approval_expired' ||
           current.reason === 'external_outcome_uncertain') throw new OrgError('Workflow needs a new authorised plan.');

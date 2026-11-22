@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths: [desktop/package.json, scripts/smoke-ui.mjs, .github/workflows/desktop-release.yml]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -119,6 +121,7 @@ jobs:
   publish:
     name: Publish the desktop downloads together
     needs: [build, ui]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -146,12 +149,12 @@ jobs:
           for file in "${files[@]}"; do test -s "assets/$file"; done
           (cd assets && sha256sum "${files[@]}" > SHA256SUMS.txt)
           cat > release-notes.md <<EOF
-          Includes DeepSeek Harness 0.2.2-rc.2, company task boards and cross-department reporting.
+          Includes DeepSeek Harness 0.2.2-rc.2, proactive company goals, scheduling, approvals and encrypted profile transfer.
 
           - Each company has To-do, In progress, Waiting, Finished and Aborted columns. Cards include owners, outcomes, acceptance criteria, results, evidence and an edit history.
           - People and Bots can add departments and edit reporting within a company. Reporting cycles and cross-company managers are rejected.
           - In-app updates are available through Help → Check for updates (macOS also has BotOrgHQ → Check for updates). Downloads are SHA-256 verified. DSH is stopped and its full data directory is backed up before installation.
-          - Version 0.2.0 users need to download and install this release once. Existing user data is reused and backed up before the new runtime starts. In-app updating applies from this version onward.
+          - Existing user data is reused and backed up before the new runtime starts. Autonomy starts OFF until enabled by the profile owner.
           - Private repository updates require a repository Contents-read GitHub token, saved using the operating system secure storage. Public repositories work without a token.
 
           | System | Download |

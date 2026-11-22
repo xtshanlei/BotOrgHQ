@@ -66,6 +66,7 @@ function EmployeeBranch({ employee, childrenByManager, activePath, openSession }
       <strong>{employee.name}</strong>
       <span>{employee.role}</span>
       <Status status={employee.status} />
+      {employee.proactive && <span title={[employee.proactive.task, employee.proactive.goalId].filter(Boolean).join(' · ')}>主动 · {employee.proactive.status}</span>}
       {employee.tool && <span className="bohq-tool">{employee.tool}</span>}
     </button>
     {reports.length > 0 && <ul>{reports.map(report =>

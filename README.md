@@ -112,3 +112,18 @@ GitHub Actions 在 `main` 的桌面版本号变动时构建 Windows x64、Mac ar
 
 [上游集成和归属说明](docs/upstream.md)
 
+
+## 主动自治（0.4.0）
+
+公司工作台新增长期目标、主动活动、触发器、审批、自治设置和指标。
+自治默认关闭。启用后，Chief 可以在本机宿主运行期间定期检查授权目标并组织
+公司内部工作。主动模式使用已配置的 DSH 模型，并通过宿主限制能访问的数据
+与工具。当前覆盖公司内的资料分析和草稿工作。
+
+在桌面版使用 **帮助 → 导出或导入数据…**，可将完整本地 DSH 文件夹打包为
+密码加密的归档，迁移到另一台机器时先验证再切换。
+
+- [设置目标、授权、触发器和审批](docs/proactive-user-guide.md)
+- [升级、加密导出与回滚](docs/proactive-migration.md)
+- [执行边界、架构和兼容性](docs/proactive-architecture.md)
+- [变更记录](CHANGELOG.md)

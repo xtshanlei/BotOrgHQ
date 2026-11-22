@@ -8,4 +8,13 @@
 <p class="note">升级继续使用原来的数据目录。安装前会备份 DSH 的配置、Bot、公司、部门、任务、对话和记忆。</p><button id="backups">打开备份文件夹</button>
 <details><summary>私有 GitHub 仓库访问</summary><p>私有仓库需要具有 BotOrgHQ 仓库 Contents 读取权限的 GitHub Token。公开仓库可以留空。</p>
 <label>GitHub Token<input id="token" type="password" autocomplete="off" placeholder="留空并保存可清除 Token"></label><button id="save-token">加密保存 Token</button><p id="token-state" role="status"></p></details>
+<details id="transfer"><summary>导出或导入完整数据</summary>
+<p>加密归档包含本地 DSH 配置、Bot、组织、对话、附件、记忆、任务与主动工作记录。</p>
+<label>恢复密码<input id="transfer-password" type="password" autocomplete="new-password" minlength="12" placeholder="至少 12 个字符"></label>
+<div class="actions"><button id="export">导出加密归档…</button><button id="import">从归档导入…</button></div>
+<p id="transfer-state" role="status"></p></details>
+<details><summary>后台运行与通知</summary>
+<label><span><input id="background" type="checkbox"> 关闭主窗口后保持 BotOrgHQ 运行</span></label>
+<label><span><input id="os-notifications" type="checkbox"> 接收系统通知</span></label>
+<button id="save-preferences">保存设置</button><p id="preferences-state" role="status"></p></details>
 </main><script src="update-ui.js"></script></body></html>

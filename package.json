@@ -1,6 +1,6 @@
 {
   "name": "bot-org-hq",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Company and department organisation charts for DeepSeek Harness",
   "keywords": [
@@ -21,6 +21,8 @@
     "src/organisation.mjs",
     "src/org-store.mjs",
     "src/proactive/*.mjs",
+    "desktop/profile-transfer.mjs",
+    "scripts/profile-transfer.mjs",
     "cordis.patch.yml",
     "third-party"
   ],
