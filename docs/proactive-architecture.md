@@ -128,4 +128,4 @@ export intentionally preserves local data, including DSH secrets stored inside i
 Native cross-Bot chat turns and external write tools require additional upstream integration. Missed event recovery combines schedule catch-up, signed webhook redelivery and optional read-only GitHub feed polling with a retained cursor. Polling is bounded by the recent feed window and does not reconstruct events GitHub no longer returns. Verification does not execute
 arbitrary repository tests or validate third-party signatures. The workbench measures
 observed events and known outcomes. It does not claim to measure unseen opportunities.
-See the PR checks for native platform results.
+Audit, goal versions and workflow outcomes are kept in the local profile until its owner removes the profile. Owner-confirmed company notes can be cleared independently. See the PR checks for native platform results.

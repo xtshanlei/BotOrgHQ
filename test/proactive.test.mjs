@@ -216,3 +216,22 @@ test('Read-only GitHub catch-up deduplicates a completed workflow against signed
   assert(work.every(job => job.verificationStatus === 'passed' && job.verifiedBy === 'host-source-quote-check'));
   assert.equal(db.get('goal', 'a', goal.id).progress.verified, 2);
 });
+
+test('The owner can activate a proposed trigger and replayed events never create delegated work', async t => {
+  const { service, db, tick, activate, calls } = fixture(t);
+  const goal = service.saveGoal('a', content);
+  await tick();
+  db.put('goal', 'a', goal.id, { ...goal, nextReviewAt: start + 30 * minute });
+  activate();
+  const proposed = service.putTrigger('a', { type: 'interval', name: 'Source check', goalId: goal.id, intervalMinutes: 5 }, 'alice');
+  assert.equal(proposed.enabled, false);
+  assert.equal(proposed.proposed, true);
+  const accepted = service.putTrigger('a', { id: proposed.id, revision: proposed.revision, enabled: true });
+  assert.equal(accepted.proposed, false);
+  assert.equal(accepted.nextAt, start + 5 * minute);
+  service.recordEvent('a', { type: 'task.finished', source: 'owner-replay', dedupeKey: 'one', goalId: goal.id, trustLevel: 'replay' });
+  await tick();
+  assert.equal(calls.length, 1);
+  assert.equal(db.all('opportunity', 'a')[0].suppression, 'shadow_replay');
+  assert.equal(db.jobs('a').filter(job => job.kind === 'work').length, 0);
+});

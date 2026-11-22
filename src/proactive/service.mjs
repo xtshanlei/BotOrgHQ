@@ -108,7 +108,7 @@ export class ProactiveService {
       if (previous && Object.keys(input).every(key => ['id', 'revision', 'enabled'].includes(key))) {
         if (typeof input.enabled !== 'boolean') throw new OrgError('Expected enabled flag.');
         return this.db.put('trigger', company, input.id, { ...previous, enabled: input.enabled,
-          nextAt: input.enabled ? nextDue(previous, this.clock()) : previous.nextAt, revision: previous.revision + 1 });
+          proposed: input.enabled ? false : previous.proposed, nextAt: input.enabled ? nextDue(previous, this.clock()) : previous.nextAt, revision: previous.revision + 1 });
       }
       const trigger = makeTrigger(input, this.clock());
       if (!this.db.get('goal', company, trigger.goalId)) throw new OrgError('Trigger goal not found.');
