@@ -78,6 +78,7 @@ jobs:
           test -s "$file"
           printf 'path=%s\n' "$file" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:
           name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
           path: ${{ steps.asset.outputs.path }}
@@ -87,7 +88,7 @@ jobs:
         if: matrix.platform == 'win'
         run: npm pack --pack-destination desktop/dist
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: matrix.platform == 'win'
+        if: matrix.platform == 'win' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:
           name: desktop-plugin
           path: desktop/dist/bot-org-hq-*.tgz
