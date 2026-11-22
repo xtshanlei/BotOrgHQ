@@ -38,7 +38,8 @@
 只把该路径通过可信的 HTTPS 代理转发到本机监听端口。GitHub 配置 JSON
 负载并使用同一密钥。受支持事件为 push、issues、pull_request、workflow_run。
 签名错误、重复报文、过时和不匹配的仓库都不会触发新工作。
-停机期间的失败传递可在 GitHub 中重投。
+停机期间的失败传递可在 GitHub 中重投。也可配置只读的 `BOTORGHQ_GITHUB_READ_*`
+环境变量和触发器的补偿拉取选项。引擎保存游标并对恢复窗口内 GitHub 仍提供的事件去重。
 
 通用 webhook 使用 `x-botorg-id`、`x-botorg-time`（毫秒 Unix 时间）和
 `x-botorg-signature`（`sha256=<hex>`），签名内容为

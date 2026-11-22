@@ -41,11 +41,11 @@ export function apply(ctx, config = {}) {
       try {
         await runtime.refresh();
         if (typeof input.action === 'string' && input.action.startsWith('proactive:')) {
-          const origin = request.headers.get('origin');
-          if (request.headers.get('sec-fetch-site') === 'cross-site' || (origin && origin !== new URL(request.url).origin)) {
+          // DSH verifies Origin against HTTP Host before creating its synthetic Fetch URL.
+          if (request.headers.get('sec-fetch-site') === 'cross-site') {
             return respond({ error: 'Same-origin DSH owner connection required.' }, 403);
           }
-          if (input.action !== 'proactive:list' && !input.value && input.action !== 'proactive:export-traces') throw new OrgError('Missing action value.');
+          if (input.action !== 'proactive:list' && !input.value && !['proactive:export-traces', 'proactive:export-memory'].includes(input.action)) throw new OrgError('Missing action value.');
           return respond({ value: proactive.action(input) });
         }
         switch (input.action) {

@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import { JobStore } from '../src/proactive/store.mjs';
 import { CAPABILITIES } from '../src/proactive/policy.mjs';
 import { ProactiveService } from '../src/proactive/service.mjs';
+import { readGitHubEvents } from '../src/proactive/github-source.mjs';
 import { day, makeTrigger, minute, nextDue, verifyWebhook } from '../src/proactive/triggers.mjs';
 
 const start = Date.parse('2026-11-22T10:00:00Z');
@@ -37,6 +38,11 @@ function fixture(t, options = {}) {
     if (options.onCall) await options.onCall(input);
     if (input.actorId === 'chief') return { value: { decision: options.decision ?? 'EXECUTE_ALLOWED', rationale: 'Evidence needs independent review', tasks, scores }, tokens: 1500 };
     const request = JSON.parse(input.payload);
+    if (options.quotes && request.evidence.some(item => item.kind === 'external-event')) {
+      const event = request.evidence.find(item => item.kind === 'external-event');
+      const quote = 'Failure confirmed on the new model';
+      return { value: { result: 'Source: ' + quote, evidenceIds: [event.id], evidenceQuotes: [{ id: event.id, quote }] }, tokens: 800 };
+    }
     return { value: { result: 'Prepared evidence with references.', evidenceIds: request.evidence.map(row => row.id), limitations: 'Unreviewed assertions' }, tokens: 800 };
   } };
   const makeService = database => new ProactiveService({ db: database, organisation: { company: id => companies.get(id) },
@@ -68,10 +74,10 @@ test('Autonomy is OFF by default and policy scopes intersect', async t => {
 
 test('A signed event produces multi-department work and verified references without chats', async t => {
   const { db, service, tick, activate, calls } = fixture(t);
-  activate();
   const goal = service.saveGoal('a', { ...content, policyScope: 'github:lab/research' });
   await tick();
-  await tick();
+  db.put('goal', 'a', goal.id, { ...goal, nextReviewAt: start + 30 * minute });
+  activate();
   const trigger = service.putTrigger('a', { type: 'github', name: 'Research workflow', goalId: goal.id, repository: 'lab/research',
     events: ['workflow_run'], secretEnv: 'BOTORGHQ_WEBHOOK_TEST' });
   const raw = Buffer.from(JSON.stringify({ repository: { full_name: 'lab/research' }, workflow_run: { id: 21, name: 'Reproduction',
@@ -89,6 +95,7 @@ test('A signed event produces multi-department work and verified references with
   assert.equal(event.duplicate, false);
   for (let i = 0; i < 6; i++) await tick();
   const work = db.jobs('a').filter(job => job.kind === 'work');
+  assert(work.every(job => job.eventId === event.event.id));
   const ids = new Set(work.map(job => job.actorId));
   assert.deepEqual(ids, new Set(['alice', 'bob']));
   assert(work.every(job => job.status === 'succeeded' && job.referenceIntegrity === 'passed' && job.verificationStatus === 'needs_human_review'));
@@ -177,4 +184,35 @@ test('Cron uses the selected timezone across DST and scheduler catches up at mos
   await tick();
   assert.equal(db.all('event', 'a').filter(event => event.source === trigger.id).length, 1);
   assert.equal(db.get('trigger', 'a', trigger.id).nextAt, start + 23 * minute);
+});
+
+test('Read-only GitHub catch-up deduplicates a completed workflow against signed delivery and verifies exact source quotations', async t => {
+  const { service, db, tick, activate } = fixture(t, { quotes: true });
+  const goal = service.saveGoal('a', { ...content, policyScope: 'github:lab/research', verificationRule: 'source_quotes' });
+  await tick();
+  db.put('goal', 'a', goal.id, { ...goal, nextReviewAt: start + 30 * minute });
+  activate();
+  const trigger = service.putTrigger('a', { type: 'github', name: 'Workflow', goalId: goal.id, repository: 'lab/research',
+    events: ['workflow_run'], secretEnv: 'BOTORGHQ_WEBHOOK_TEST', pollTokenEnv: 'BOTORGHQ_GITHUB_READ_TEST' });
+  const workflow = { id: 99, run_attempt: 2, name: 'Failure confirmed on the new model', status: 'completed', conclusion: 'failure', updated_at: new Date(start).toISOString() };
+  const read = async (url, options) => {
+    assert.equal(url, 'https://api.github.com/repos/lab/research/actions/runs?per_page=100');
+    assert.equal(options.redirect, 'error');
+    assert.equal(options.method, undefined);
+    return Response.json({ workflow_runs: [workflow, { ...workflow, id: 100, status: 'queued' }] });
+  };
+  const [event, ...others] = await readGitHubEvents(trigger, 'retained-host-secret', start, undefined, read, start);
+  assert.equal(others.length, 0);
+  assert(!service.recordEvent('a', { ...event, goalId: goal.id }).duplicate);
+  const raw = Buffer.from(JSON.stringify({ repository: { full_name: 'lab/research' }, workflow_run: workflow, action: 'completed' }));
+  const secret = 'test-secret-at-least-24-chars';
+  const headers = new Headers({ 'x-github-delivery': 'different-transport-id', 'x-github-event': 'workflow_run',
+    'x-hub-signature-256': 'sha256=' + createHmac('sha256', secret).update(raw).digest('hex') });
+  const webhook = verifyWebhook({ trigger, raw, headers, secret, now: start });
+  assert(service.recordEvent('a', { ...webhook, goalId: goal.id }).duplicate);
+  for (let i = 0; i < 4; i++) await tick();
+  const work = db.jobs('a').filter(job => job.kind === 'work');
+  assert.equal(work.length, 2);
+  assert(work.every(job => job.verificationStatus === 'passed' && job.verifiedBy === 'host-source-quote-check'));
+  assert.equal(db.get('goal', 'a', goal.id).progress.verified, 2);
 });

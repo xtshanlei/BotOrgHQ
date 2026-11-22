@@ -75,7 +75,7 @@ function PolicyForm({ company, data, perform, disabled }) {
   </>;
 }
 
-function Goals({ company, data, perform, disabled }) {
+function Goals({ company, data, versions, perform, disabled }) {
   const [edit, setEdit] = useState(null);
   const goal = edit || {};
   const choices = data.records.map(row => [row.id, row.title]);
@@ -98,6 +98,7 @@ function Goals({ company, data, perform, disabled }) {
       {textField('reviewMinutes', '复查间隔（分钟）', goal.reviewMinutes ?? 30, { type: 'number', min: 5, max: 10080 })}
       {textField('deadline', '截止时间（ISO，含时区）', goal.deadline ? new Date(goal.deadline).toISOString() : '')}
       {textField('policyScope', '数据授权范围', goal.policyScope ?? 'company', { required: true })}
+      {selectField('verificationRule', '证据校验', [['owner_review', '人工复核'], ['source_quotes', '核对逐字来源引文']], goal.verificationRule ?? 'owner_review')}
       {textField('measurableIndicators', '可衡量指标（逗号分隔）', goal.measurableIndicators?.join(', '))}
       {textField('sourceEvidence', '来源证据（逗号分隔）', goal.sourceEvidence?.join(', '))}
       {['intent', 'successCriteria', 'businessValue', 'constraints', 'nextAction'].map((key, index) =>
@@ -113,6 +114,8 @@ function Goals({ company, data, perform, disabled }) {
       {item.parentId && <p>父目标 {choices.find(([id]) => id === item.parentId)?.[1] ?? item.parentId}</p>}
       {item.dependencies?.length > 0 && <p>依赖 {item.dependencies.map(id => choices.find(([candidate]) => candidate === id)?.[1] ?? id).join('、')}</p>}
       <p>成功标准 · {item.successCriteria}</p>
+      <details><summary>最近的版本</summary>{versions.filter(version => version.goalId === item.id).map(version =>
+        <p key={version.id}>v{version.revision} · {version.value.status} · {version.value.successCriteria}</p>)}</details>
       <div className="bohq-actions">
         <button disabled={disabled} onClick={() => setEdit(item)}>编辑</button>
         {['active', 'paused', 'proposed', 'blocked'].includes(item.status) && <button disabled={disabled}
@@ -144,6 +147,7 @@ function Triggers({ data, goals, company, perform, disabled }) {
       {type === 'once' && textField('at', '执行时间（ISO，含时区）', '', { required: true })}
       {type === 'cron' && textField('cron', 'Cron（分 时 日 月 周）', '0 9 * * 1-5', { required: true })}
       {type === 'github' && textField('repository', 'GitHub 仓库 owner/name', '', { required: true })}
+      {type === 'github' && textField('pollTokenEnv', '补偿拉取凭据变量（可选）', '')}
       {['github', 'webhook'].includes(type) && textField('secretEnv', '密钥环境变量名', 'BOTORGHQ_WEBHOOK_RESEARCH', { required: true })}
       {['github', 'internal'].includes(type) && textField('events', '订阅事件（逗号分隔）', type === 'github' ? 'workflow_run' : 'task.finished', { required: true })}
       <button disabled={disabled || !goals.length} className="bohq-primary">添加触发器</button>
@@ -152,6 +156,7 @@ function Triggers({ data, goals, company, perform, disabled }) {
       <strong>{row.name}</strong><p>{row.type} · {row.enabled ? '启用' : '停用'} · {row.sourceState}</p>
       <p>上次 {showTime(row.lastAt)} · 下次 {showTime(row.nextAt)} · {row.timezone}</p>
       {row.webhookPath && <code>{row.webhookPath}</code>}
+      {row.pollingState && <p>补偿拉取 · {row.pollingState}</p>}
       <div className="bohq-actions">
         <button disabled={disabled} onClick={() => perform('trigger', { id: row.id, revision: row.revision, enabled: !row.enabled })}>{row.enabled ? '停用' : '启用'}</button>
         <button disabled={disabled || !row.enabled} onClick={() => perform('trigger-now', { id: row.id })}>测试触发</button>
@@ -181,7 +186,7 @@ function Approvals({ data, perform, disabled }) {
   </article>);
 }
 
-function Activities({ company, opportunities, runs, activity, notifications, goals, perform, send, disabled }) {
+function Activities({ company, opportunities, runs, activity, notifications, memory, events, goals, perform, send, disabled }) {
   return <>
     <div className="bohq-pro-toolbar">
       {['jsonl', 'csv'].map(format => <button key={format} onClick={async () => {
@@ -189,6 +194,35 @@ function Activities({ company, opportunities, runs, activity, notifications, goa
         download('botorg-activity.' + format, result, 'text/plain');
       }}>导出 {format.toUpperCase()}</button>)}
     </div>
+    <details><summary>公司确认的背景记录</summary>
+      <form className="bohq-form bohq-pro-form" onSubmit={async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        if (await perform('memory', Object.fromEntries(new FormData(form)))) form.reset();
+      }}>
+        {textField('title', '标题', '', { required: true })}
+        {textField('provenance', '来源', '', { required: true })}
+        {textField('expiresAt', '失效时间（ISO，可选）', '')}
+        <label className="bohq-full">已确认内容<textarea name="content" rows={2} required maxLength={3000} /></label>
+        <button disabled={disabled}>添加</button>
+        <button type="button" onClick={async () => download('botorg-company-memory.json', await send('proactive:export-memory'), 'application/json')}>导出</button>
+      </form>
+      {memory.map(item => <article className="bohq-pro-card" key={item.id}>
+        <strong>{item.title}</strong><p>{item.content}</p><p className="bohq-muted">{item.provenance} · {showTime(item.expiresAt)}</p>
+        <button disabled={disabled} onClick={() => perform('memory', { operation: 'remove', id: item.id })}>清除记录</button>
+      </article>)}
+    </details>
+    <details><summary>事件与回放</summary>
+      <form className="bohq-form" onSubmit={event => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        void perform('replay', { eventId: data.get('eventId'), goalId: data.get('goalId') });
+      }}>
+        {selectField('eventId', '事件', events.filter(item => item.trustLevel !== 'replay').map(item => [item.id, item.type + ' · ' + showTime(item.timestamp)]))}
+        {selectField('goalId', '授权目标', goals.filter(item => item.status === 'active').map(item => [item.id, item.title]))}
+        <button disabled={disabled || !events.length || !goals.some(item => item.status === 'active')}>回放为影子评估</button>
+      </form>
+    </details>
     <h3>通知</h3>
     {notifications.map(row => <p className="bohq-pro-line" key={row.id}>{row.title} · {showTime(row.updatedAt)}</p>)}
     <h3>机会</h3>
@@ -235,7 +269,7 @@ export function ProactivePanel({ kind, company, call, disabled }) {
   const send = (action, value = {}, signal) => call(action, { companyId: company.id, ...value }, signal);
   const list = (view, signal) => send('proactive:list', { kind: view }, signal);
   async function load(signal) {
-    const views = kind === 'opportunity' ? ['opportunity', 'runs', 'activity', 'notification', 'goal'] : kind === 'trigger' ? ['trigger', 'goal'] : [kind];
+    const views = kind === 'opportunity' ? ['opportunity', 'runs', 'activity', 'notification', 'goal', 'memory', 'event'] : kind === 'trigger' ? ['trigger', 'goal'] : kind === 'goal' ? ['goal', 'goalVersion'] : [kind];
     const entries = await Promise.all(views.map(view => list(view, signal)));
     if (!signal?.aborted) setData(Object.fromEntries(views.map((view, index) => [view, entries[index]])));
   }
@@ -263,12 +297,12 @@ export function ProactivePanel({ kind, company, call, disabled }) {
     <div className="bohq-pro-content">
       {error && <p className="bohq-error" role="alert">{error}</p>}
       {!actual && !error && <p>正在加载…</p>}
-      {actual && kind === 'goal' && <Goals company={company} data={actual} perform={perform} disabled={off} />}
+      {actual && kind === 'goal' && <Goals company={company} data={actual} versions={data.goalVersion.records} perform={perform} disabled={off} />}
       {actual && kind === 'trigger' && <Triggers company={company} data={actual} goals={data.goal.records} perform={perform} disabled={off} />}
       {actual && kind === 'policy' && <PolicyForm company={company} data={actual} perform={perform} disabled={off} />}
       {actual && kind === 'approval' && (actual.records.length ? <Approvals data={actual} perform={perform} disabled={off} /> : <p>没有审批记录。</p>)}
       {actual && kind === 'opportunity' && <Activities company={company} opportunities={actual.records} runs={data.runs.records} activity={data.activity.records}
-        notifications={data.notification.records} goals={data.goal.records} perform={perform} send={send} disabled={off} />}
+        notifications={data.notification.records} memory={data.memory.records} events={data.event.records} goals={data.goal.records} perform={perform} send={send} disabled={off} />}
       {actual && kind === 'metrics' && <dl className="bohq-metrics">
         <dt>引擎</dt><dd>{actual.engine} · 本机运行，随宿主退出或休眠而停止调度</dd>
         <dt>有效目标</dt><dd>{actual.activeGoals}</dd><dt>已达成</dt><dd>{actual.achievedGoals}</dd>

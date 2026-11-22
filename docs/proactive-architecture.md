@@ -109,7 +109,7 @@ local-only and needs an owner-operated TLS proxy for external ingress.
 
 Verification distinguishes an intact source reference from validation of a claim.
 Dependent internal work can use an intact but provisional prior result as input.
-Only an affirmative human review advances the verified tally. The audit export
+An affirmative human review or an explicitly selected deterministic source-quote check advances the verified tally. The quote check confirms exact references and quotations, not the truth of general claims. The audit export
 excludes model prompts, webhook bodies and secrets. The full encrypted profile
 export intentionally preserves local data, including DSH secrets stored inside it.
 
@@ -125,9 +125,7 @@ export intentionally preserves local data, including DSH secrets stored inside i
 | M5 | Existing workbench tabs, employee status, review/export and local notification preferences |
 | M6 | Additive storage, import quarantine, portable encrypted export/import, native smoke and PR platform build matrix |
 
-Native cross-Bot chat turns, live remote GitHub history reconciliation, and external
-write tools require additional upstream integration. Current missed event recovery is
-schedule catch-up and signed webhook redelivery. Verification does not execute
+Native cross-Bot chat turns and external write tools require additional upstream integration. Missed event recovery combines schedule catch-up, signed webhook redelivery and optional read-only GitHub feed polling with a retained cursor. Polling is bounded by the recent feed window and does not reconstruct events GitHub no longer returns. Verification does not execute
 arbitrary repository tests or validate third-party signatures. The workbench measures
 observed events and known outcomes. It does not claim to measure unseen opportunities.
 See the PR checks for native platform results.

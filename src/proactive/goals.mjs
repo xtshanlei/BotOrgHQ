@@ -33,7 +33,7 @@ export function updateGoal(db, company, input, actor, now, validateOwner) {
   if (actor !== 'owner' && current && (current.status !== 'proposed' || current.createdBy !== actor)) throw new OrgError('Bots may edit only their own unapproved proposals.');
   const value = { ownerId: null, departmentId: null, parentId: null, dependencies: [], policyScope: 'company', priority: 50,
     reviewMinutes: 30, createdBy: actor, createdAt: now, approvedBy: null, businessValue: '', constraints: '',
-    measurableIndicators: [], sourceEvidence: [], nextAction: '', ...current, id };
+    measurableIndicators: [], sourceEvidence: [], nextAction: '', verificationRule: 'owner_review', ...current, id };
   for (const [field, min, max] of [['priority', 0, 100], ['reviewMinutes', 5, 10080]]) {
     if (input[field] === undefined) continue;
     if (!Number.isInteger(input[field]) || input[field] < min || input[field] > max) throw new OrgError('Invalid goal ' + field + '.');
@@ -53,6 +53,10 @@ export function updateGoal(db, company, input, actor, now, validateOwner) {
   if (input.policyScope !== undefined) {
     value.policyScope = text(input.policyScope, 'Policy scope', 150);
     if (value.policyScope !== 'company' && !/^github:[\w.-]+\/[\w.-]+$/.test(value.policyScope)) throw new OrgError('Invalid goal resource scope.');
+  }
+  if (input.verificationRule !== undefined) {
+    if (!['owner_review', 'source_quotes'].includes(input.verificationRule)) throw new OrgError('Invalid evidence verification rule.');
+    value.verificationRule = input.verificationRule;
   }
   validateOwner(value);
   value.status = actor === 'owner' ? input.status ?? current?.status ?? 'proposed' : 'proposed';

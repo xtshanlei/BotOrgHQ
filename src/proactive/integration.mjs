@@ -8,7 +8,9 @@ import { OrgError, text } from '../org-store.mjs';
 import { CAPABILITIES, DEFAULT_POLICY } from './policy.mjs';
 import { JobStore } from './store.mjs';
 import { ProactiveService } from './service.mjs';
-import { date, verifyWebhook } from './triggers.mjs';
+import { readGitHubEvents } from './github-source.mjs';
+import { goalReady } from './goals.mjs';
+import { date, minute, verifyWebhook } from './triggers.mjs';
 
 export class ModelGateway {
   constructor(ctx, runtime) { Object.assign(this, { ctx, runtime }); }
@@ -72,7 +74,7 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
     if (!found) return null;
     return { ...found, chiefId: snapshot.chief?.id, employees: found.departments.flatMap(dep => dep.employees) };
   };
-  const service = new ProactiveService({ db, organisation: { company }, model: new ModelGateway(ctx, runtime),
+  const service = new ProactiveService({ db, organisation: { company, checkDelegation: organisation.checkDelegation }, model: new ModelGateway(ctx, runtime),
     writable: () => !runtime.readOnly(), notify: payload => { if (process.connected) process.send({ type: 'proactive-notification', ...payload }); } });
   const registrations = [
     ['org_goal_list', 'List the long-term goals in your company.', 'goal'],
@@ -99,6 +101,13 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
   }, (input, actor) => {
     organisation.writable();
     return service.saveGoal(input.company_id, { title: input.title, intent: input.intent, successCriteria: input.success_criteria, parentId: input.parent_id, ownerId: actor }, actor);
+  });
+  register('org_goal_update_proposal', 'Edit your own pending goal proposal.', {
+    id: param('Goal ID', true), revision: { type: 'number', required: true, description: 'Current goal version' },
+    intent: param('Proposed intent'), success_criteria: param('Proposed success criteria')
+  }, (input, actor) => {
+    organisation.writable();
+    return service.saveGoal(input.company_id, { id: input.id, revision: input.revision, intent: input.intent, successCriteria: input.success_criteria }, actor);
   });
   register('org_trigger_propose', 'Propose a disabled interval trigger for human review.', {
     goal_id: param('Goal ID', true), name: param('Name', true), interval_minutes: { type: 'number', required: true, description: 'At least 5 minutes' }
@@ -138,12 +147,12 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
     const afterId = typeof input.cursor?.id === 'string' ? input.cursor.id : undefined;
     const records = db.list(kind, companyId, { before, afterId, limit }).map(row => {
       if (kind === 'trigger' && actor !== 'owner') {
-        const { secretEnv, ...visible } = row;
+        const { secretEnv, pollTokenEnv, ...visible } = row;
         return visible;
       }
       if (kind === 'trigger' && ['webhook', 'github'].includes(row.type)) return { ...row,
         sourceState: webhook?.listening && process.env[row.secretEnv]?.length >= 24 ? 'listening' : 'not_connected',
-        webhookPath: '/webhooks/' + row.id };
+        webhookPath: '/webhooks/' + row.id, pollingState: row.pollTokenEnv ? row.pollingState ?? 'not_connected' : 'not_configured' };
       return row;
     });
     return page(records, row => ({ time: row.updatedAt, id: row.id }), limit);
@@ -159,6 +168,14 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
     if (input.action === 'proactive:policy') return service.setPolicy(companyId, input.value);
     if (input.action === 'proactive:trigger') return service.putTrigger(companyId, input.value);
     if (input.action === 'proactive:trigger-now') return service.triggerNow(companyId, input.value);
+    if (input.action === 'proactive:replay') {
+      const original = db.get('event', companyId, input.value.eventId);
+      const goal = db.get('goal', companyId, input.value.goalId);
+      if (!original || !goal) throw new OrgError('Event or goal not found.');
+      return service.recordEvent(companyId, { source: 'owner-replay', dedupeKey: original.id + ':' + goal.id + ':' + goal.version,
+        goalId: goal.id, subjectId: original.id, correlationId: original.correlationId, type: original.type,
+        scope: original.scope, payload: original.payload, trustLevel: 'replay' });
+    }
     if (input.action === 'proactive:approval') return service.approval(companyId, input.value);
     if (input.action === 'proactive:verify') return service.verify(companyId, input.value);
     if (input.action === 'proactive:workflow') return service.control(companyId, input.value);
@@ -176,6 +193,7 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
         });
       });
     }
+    if (input.action === 'proactive:export-memory') return JSON.stringify(db.all('memory', companyId), null, 2);
     if (input.action === 'proactive:export-traces') {
       const rows = db.activity(companyId, undefined, 10000).reverse();
       if (input.format === 'csv') {
@@ -205,7 +223,7 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
   function projectTasks(companyId) {
     return db.jobs(companyId, 1000).filter(job => job.kind === 'work').map(job => ({
       ...job.task, id: job.id, workflowRunId: job.id, ownerId: job.actorId, goalId: job.goalId, parentTaskId: job.parentTaskId,
-      source: 'proactive', status: boardStatus[job.status], workflowStatus: job.status, attempts: job.attempt,
+      source: 'proactive', status: job.status === 'succeeded' && !job.evidence?.length && !job.verifiedAt ? 'waiting' : boardStatus[job.status], workflowStatus: job.status, attempts: job.attempt,
       nextRetryAt: job.status === 'retry_scheduled' ? job.due : null, reason: job.reason, deadline: job.deadline, risk: job.risk,
       approvalStatus: job.status === 'waiting_approval' ? 'pending' : null, verificationStatus: job.verificationStatus ?? 'unverified',
       result: job.result, evidence: job.evidence?.map(item => item.kind + ' · ' + item.id + ' · sha256:' + item.hash).join('\n'),
@@ -213,7 +231,55 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
     }));
   }
 
+  organisation.setProactiveTasks(projectTasks);
   let webhook;
+  const polling = new AbortController();
+  let pollPromise = null;
+  async function pollGitHub() {
+    if (!service.leader || service.stopped || service.suspended || runtime.readOnly() || pollPromise) return;
+    const now = service.clock();
+    const trigger = db.all('trigger').filter(row => row.type === 'github' && row.enabled && row.pollTokenEnv && row.pollAfter <= now)
+      .sort((a, b) => a.pollAfter - b.pollAfter).find(row => {
+        const policy = service.policy(row.companyId, row.actorId);
+        const goal = db.get('goal', row.companyId, row.goalId);
+        return !policy.stopped && policy.mode !== 'OFF' && policy.dataScopes.includes('github:' + row.repository) &&
+          goalReady(db, goal, now) && goal.policyScope === 'github:' + row.repository;
+      });
+    if (!trigger) return;
+    const secret = process.env[trigger.pollTokenEnv];
+    if (!secret) {
+      db.put('trigger', trigger.companyId, trigger.id, { ...trigger, pollAfter: now + 10 * minute, pollingState: 'not_connected' });
+      return;
+    }
+    pollPromise = (async () => {
+      try {
+        const signal = AbortSignal.any([polling.signal, AbortSignal.timeout(12_000)]);
+        const events = await readGitHubEvents(trigger, secret, trigger.pollCursor, signal, fetch, now);
+        if (signal.aborted || service.stopped || service.suspended || !db.leads(service.id)) return;
+        db.transaction(() => {
+          const current = db.get('trigger', trigger.companyId, trigger.id);
+          const policy = service.policy(trigger.companyId, trigger.actorId);
+          const goal = db.get('goal', trigger.companyId, trigger.goalId);
+          if (!current?.enabled || current.revision !== trigger.revision || policy.stopped || policy.mode === 'OFF' ||
+            !policy.dataScopes.includes('github:' + trigger.repository) || !goalReady(db, goal, service.clock()) || goal.policyScope !== 'github:' + trigger.repository) return;
+          for (const event of events) service.event(trigger.companyId, { ...event, goalId: trigger.goalId, actorId: trigger.actorId });
+          db.put('trigger', trigger.companyId, trigger.id, { ...current, pollingState: 'connected',
+            pollFailures: 0, pollAfter: now + 5 * minute, pollCursor: Math.max(trigger.pollCursor, ...events.map(event => event.occurredAt)) });
+        });
+      } catch {
+        if (polling.signal.aborted) return;
+        const current = db.get('trigger', trigger.companyId, trigger.id);
+        if (current?.revision === trigger.revision) {
+          const failures = (current.pollFailures ?? 0) + 1;
+          db.put('trigger', trigger.companyId, trigger.id, { ...current, pollFailures: failures,
+            pollingState: failures >= 3 ? 'failed' : 'retrying', pollAfter: now + Math.min(60, 2 ** Math.min(failures, 6)) * minute });
+          db.trace(trigger.companyId, trigger.id, 'source.github_retry', { reason: 'read_failed' });
+        }
+      }
+    })();
+    try { await pollPromise; }
+    finally { pollPromise = null; }
+  }
   const stop = service.launch();
   ctx.effect(() => {
     const port = Number(process.env.BOTORGHQ_WEBHOOK_PORT ?? 0);
@@ -251,21 +317,25 @@ export function installProactive(ctx, home, dshHome, runtime, organisation) {
       if (!service.leader || service.stopped || service.suspended || runtime.readOnly()) return;
       try {
         for (const company of organisation.snapshot().companies) {
-          if (service.policy(company.id).mode !== 'OFF') service.observeTasks(company.id, company.tasks);
+          if (service.policy(company.id).mode !== 'OFF') service.observeTasks(company.id, company.tasks, company.departments.flatMap(department => department.employees));
         }
       } catch { service.health = 'task_observation_error'; }
     }, 15_000);
     observe.unref();
+    const pollTimer = setInterval(() => { void pollGitHub().catch(() => { service.health = 'source_observation_error'; }); }, 15_000);
+    pollTimer.unref();
     const receive = message => { if (message?.type === 'proactive-suspend') service.suspend(message.value === true); };
     if (process.connected) process.on('message', receive);
     return async () => {
       process.off('message', receive);
       clearInterval(observe);
+      clearInterval(pollTimer);
+      polling.abort();
       const closed = webhook ? new Promise(resolve => {
         webhook.close(resolve);
         webhook.closeAllConnections();
       }) : Promise.resolve();
-      try { await Promise.all([stop(), closed]); }
+      try { await Promise.all([stop(), closed, pollPromise]); }
       finally { db.close(); }
     };
   }, 'BotOrgHQ proactive autonomy');

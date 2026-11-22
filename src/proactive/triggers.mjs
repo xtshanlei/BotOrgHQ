@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { CronExpressionParser } from 'cron-parser';
 import { OrgError, text } from '../org-store.mjs';
 import { digest, validZone } from './policy.mjs';
+import { githubEvent } from './github-source.mjs';
 
 export const minute = 60_000;
 export const day = 24 * 60 * minute;
@@ -51,6 +52,10 @@ export function makeTrigger(input, now) {
   if (type === 'github') {
     trigger.repository = text(input.repository, 'Repository', 120).toLowerCase();
     if (!/^[\w.-]+\/[\w.-]+$/.test(trigger.repository)) throw new OrgError('Repository must be owner/name.');
+    trigger.pollTokenEnv = input.pollTokenEnv ? text(input.pollTokenEnv, 'GitHub read token environment variable', 80) : null;
+    if (trigger.pollTokenEnv && !/^BOTORGHQ_GITHUB_READ_[A-Z0-9_]+$/.test(trigger.pollTokenEnv)) throw new OrgError('Use a BOTORGHQ_GITHUB_READ_ variable name.');
+    trigger.pollCursor = now;
+    trigger.pollAfter = now;
   }
   if (type === 'github' || type === 'webhook') {
     trigger.secretEnv = text(input.secretEnv, 'Secret environment variable', 80);
@@ -84,7 +89,16 @@ export function verifyWebhook({ trigger, raw, headers, secret, now }) {
   catch { throw new OrgError('Invalid webhook JSON.'); }
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new OrgError('Invalid webhook object.');
   if (github && body.repository?.full_name?.toLowerCase?.() !== trigger.repository) throw new OrgError('GitHub repository does not match.');
-  const subject = github ? body.workflow_run ?? body.pull_request ?? body.issue ?? body.head_commit ?? body : body;
+  if (github) {
+    const subject = type === 'issues' ? body.issue : type === 'push' ? (body.head_commit ?? body) : body[type];
+    if (!subject || (type !== 'push' && typeof subject.id !== 'number') || (type === 'push' && typeof body.ref !== 'string')) {
+      throw new OrgError('GitHub payload does not match the subscribed event.');
+    }
+    const date = Date.parse(subject.updated_at ?? subject.timestamp ?? '');
+    const event = githubEvent(trigger, type, delivery, body, subject, Number.isFinite(date) ? date : null);
+    return { ...event, bodyHash: digest(raw.toString('utf8')) };
+  }
+  const subject = body;
   const payload = {
     title: excerpt(subject.title ?? subject.name ?? subject.message ?? body.ref),
     summary: excerpt(subject.summary ?? subject.body ?? subject.message, 1800),
@@ -95,5 +109,5 @@ export function verifyWebhook({ trigger, raw, headers, secret, now }) {
   // GitHub signs the body, but not the delivery header. Also deduplicate signed bytes.
   const bodyHash = digest(raw.toString('utf8'));
   return { type: github ? 'github.' + type : type, source: trigger.id, subjectId: excerpt(String(subject.id ?? delivery)),
-    payload, dedupeKey: delivery, bodyHash, scope: github ? 'github:' + trigger.repository : 'company', trustLevel: 'external' };
+    payload, dedupeKey: delivery, bodyHash, occurredAt: Number(time.padEnd(13, '0')), scope: 'company', trustLevel: 'external' };
 }
