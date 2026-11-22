@@ -6,5 +6,8 @@ contextBridge.exposeInMainWorld('updates', {
   download: () => ipcRenderer.invoke('updates:download'),
   install: () => ipcRenderer.invoke('updates:install'),
   saveToken: token => ipcRenderer.invoke('updates:token', token),
+  transfer: (operation, password) => ipcRenderer.invoke('updates:transfer', operation, password),
+  preferences: values => ipcRenderer.invoke('updates:preferences', values),
+  onShowTransfer: callback => ipcRenderer.on('updates:show-transfer', () => callback()),
   showBackups: () => ipcRenderer.invoke('updates:backups')
 });

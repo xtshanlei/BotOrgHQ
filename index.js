@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { createRuntime, inject } from 'ds-bot';
 import { createOrganisation } from './src/organisation.mjs';
 import { OrgError, OrgStore } from './src/org-store.mjs';
+import { installProactive } from './src/proactive/integration.mjs';
 
 export { inject };
 export const name = 'bot-org-hq';
@@ -14,6 +15,7 @@ export function apply(ctx, config = {}) {
   const store = new OrgStore(join(home, 'organisation.json'));
   const organisation = createOrganisation(runtime, store);
   organisation.registerTools();
+  const proactive = installProactive(ctx, home, dshHome, runtime, organisation);
   ctx.effect(() => ctx.tools.guard(organisation.guardMessage), 'BotOrgHQ direct message scope');
 
   ctx.effect(() => ctx.systemPrompt.section({
@@ -38,10 +40,26 @@ export function apply(ctx, config = {}) {
       }
       try {
         await runtime.refresh();
+        if (typeof input.action === 'string' && input.action.startsWith('proactive:')) {
+          // DSH verifies Origin against HTTP Host before creating its synthetic Fetch URL.
+          if (request.headers.get('sec-fetch-site') === 'cross-site') {
+            return respond({ error: 'Same-origin DSH owner connection required.' }, 403);
+          }
+          if (input.action !== 'proactive:list' && !input.value && !['proactive:export-traces', 'proactive:export-memory'].includes(input.action)) throw new OrgError('Missing action value.');
+          return respond({ value: proactive.action(input) });
+        }
         switch (input.action) {
           case 'state':
             if (!runtime.readOnly() && !runtime.state.mainBotIds.length) await runtime.bootstrap();
-            return respond({ value: organisation.snapshot() });
+            {
+              const value = organisation.snapshot();
+              for (const company of value.companies) {
+                company.tasks.push(...proactive.projectTasks(company.id));
+                const states = proactive.employeeState(company.id);
+                for (const department of company.departments) for (const employee of department.employees) employee.proactive = states[employee.id];
+              }
+              return respond({ value });
+            }
           case 'create-company':
             organisation.writable();
             return respond({ value: store.createCompany(input) }, 201);

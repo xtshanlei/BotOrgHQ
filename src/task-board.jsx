@@ -43,13 +43,13 @@ export function TaskBoard({ company, disabled, mutate, openSession }) {
         {entries.map(task => {
           const owner = byId.get(task.ownerId);
           return <article className="bohq-task" key={task.id}>
-            <h4>{task.title}</h4><p className="bohq-muted">{owner ? `${owner.name} · ${owner.departmentName}` : task.ownerId ? '已移除的员工' : '待分配'}</p>
+            <h4>{task.title}</h4>{task.source === 'proactive' && <p className="bohq-muted">主动任务 · {task.workflowStatus} · {task.verificationStatus}</p>}<p className="bohq-muted">{owner ? `${owner.name} · ${owner.departmentName}` : task.ownerId ? '已移除的员工' : '待分配'}</p>
             <dl><dt>预期结果</dt><dd>{task.expectedResult}</dd><dt>验收标准</dt><dd>{task.acceptanceCriteria}</dd>
               {task.reason && <><dt>等待或终止原因</dt><dd>{task.reason}</dd></>}
               {task.result && <><dt>实际结果</dt><dd>{task.result}</dd></>}
               {task.evidence && <><dt>证据</dt><dd>{task.evidence}</dd></>}
             </dl>
-            <div className="bohq-actions"><button disabled={disabled} onClick={() => setDraft({ ...task })}>查看 / 编辑</button>
+            <div className="bohq-actions">{task.source !== 'proactive' && <button disabled={disabled} onClick={() => setDraft({ ...task })}>查看 / 编辑</button>}
               {owner?.sessionId && <button onClick={() => openSession(owner.sessionId)}>员工对话 ↗</button>}</div>
             <details><summary>说明与变更记录</summary><p>{task.description}</p>
               <ol>{task.history.map((entry, index) => <li key={index}>{new Date(entry.at).toLocaleString()} · {entry.actorId === 'human' ? '人工' : byId.get(entry.actorId)?.name ?? entry.actorId}

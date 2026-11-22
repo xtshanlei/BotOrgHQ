@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const executable = process.platform === 'win32' ? 'node.exe' : 'node';
 const redact = text => text.replace(/([?&]token=)[^&\s]+/g, '$1[hidden]');
 
-export function startEngine(runtime, home, onUnexpectedExit) {
+export function startEngine(runtime, home, onUnexpectedExit, onNotification) {
   mkdirSync(home, { recursive: true });
   const child = spawn(join(runtime, 'bin', executable), [join(runtime, 'host.mjs')], {
     cwd: home,
@@ -35,6 +35,7 @@ export function startEngine(runtime, home, onUnexpectedExit) {
     });
     child.on('message', message => {
       if (message?.type === 'error') failure(message.message);
+      if (message?.type === 'proactive-notification') onNotification?.(message);
       if (message?.type !== 'ready' || started) return;
       try {
         const url = new URL(message.url);
@@ -59,6 +60,7 @@ export function startEngine(runtime, home, onUnexpectedExit) {
     })();
     return stopPromise;
   }
-  return { ready, stop };
+  const suspend = value => { if (child.connected) child.send({ type: 'proactive-suspend', value }, () => {}); };
+  return { ready, stop, suspend };
 }
 

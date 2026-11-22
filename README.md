@@ -2,20 +2,20 @@
 
 在 DeepSeek Harness 中管理多家公司、部门和长期运行的 Bot 员工。集团 Chief 可以建立公司、招聘员工并委派任务。组织图实时显示员工状态，点击部门查看汇报层级，点击员工打开原生对话。
 
-BotOrgHQ 提供内置 DSH 的独立桌面应用和可安装到现有 DSH 的插件。当前版本为 **0.3.0**，内置 **DSH 0.2.2-rc.2**，复用 **DS Bot 0.3.1** 的会话、交接、群聊和记忆能力。
+BotOrgHQ 提供内置 DSH 的独立桌面应用和可安装到现有 DSH 的插件。当前版本为 **0.4.0**，内置 **DSH 0.2.2-rc.2**，复用 **DS Bot 0.3.1** 的会话、交接、群聊和记忆能力。
 
 ## Desktop downloads
 
-[当前桌面版与插件下载](https://github.com/xtshanlei/BotOrgHQ/releases/tag/v0.3.0-desktop) · [所有 Releases](https://github.com/xtshanlei/BotOrgHQ/releases)
+[当前桌面版与插件下载](https://github.com/xtshanlei/BotOrgHQ/releases/tag/v0.4.0-desktop) · [所有 Releases](https://github.com/xtshanlei/BotOrgHQ/releases)
 
 | 系统 | 下载 |
 | --- | --- |
-| macOS · Apple 芯片 | [BotOrgHQ-0.3.0-mac-arm64.zip](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.3.0-desktop/BotOrgHQ-0.3.0-mac-arm64.zip) |
-| macOS · Intel 芯片 | [BotOrgHQ-0.3.0-mac-x64.zip](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.3.0-desktop/BotOrgHQ-0.3.0-mac-x64.zip) |
-| Windows · x64 | [BotOrgHQ-0.3.0-win-x64.exe](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.3.0-desktop/BotOrgHQ-0.3.0-win-x64.exe) |
-| 现有 DSH 的插件 | [bot-org-hq-0.3.0.tgz](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.3.0-desktop/bot-org-hq-0.3.0.tgz) |
+| macOS · Apple 芯片 | [BotOrgHQ-0.4.0-mac-arm64.zip](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/BotOrgHQ-0.4.0-mac-arm64.zip) |
+| macOS · Intel 芯片 | [BotOrgHQ-0.4.0-mac-x64.zip](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/BotOrgHQ-0.4.0-mac-x64.zip) |
+| Windows · x64 | [BotOrgHQ-0.4.0-win-x64.exe](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/BotOrgHQ-0.4.0-win-x64.exe) |
+| 现有 DSH 的插件 | [bot-org-hq-0.4.0.tgz](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/bot-org-hq-0.4.0.tgz) |
 
-[SHA-256 校验文件](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.3.0-desktop/SHA256SUMS.txt)
+[SHA-256 校验文件](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/SHA256SUMS.txt)
 
 Mac 解压后将 BotOrgHQ.app 放到“应用程序”，Windows 运行 EXE 安装器。Mac 应用使用 ad-hoc 签名，尚未经过 Apple 公证。Windows 安装器尚未签名。私有仓库的下载需要有访问权限的 GitHub 账号。
 
@@ -65,7 +65,7 @@ Bot 使用 `org_create_department` 在自己的公司添加部门。Chief 或员
 
 ## 应用内更新与数据保留
 
-**从 0.2.0 升级时，先手动下载并安装 0.3.0 一次。** 此后使用菜单 **帮助 → 检查更新…**，Mac 也可使用 **BotOrgHQ → 检查更新…**。
+**从 0.2.0 升级时，请手动下载 0.4.0。** 从 0.3.0 起，可使用菜单 **帮助 → 检查更新…**，Mac 也可使用 **BotOrgHQ → 检查更新…**。
 
 更新窗口会检查本仓库的 Releases，选择匹配系统与架构的新版本，在应用内下载并校验 SHA-256。安装会请求确认，随后停止 DSH、备份完整数据目录并启动安装。正在运行的任务会被中断，升级后可以检查看板和对话继续工作。
 
@@ -83,12 +83,12 @@ Bot 使用 `org_create_department` 在自己的公司添加部门。Chief 或员
 
 ## 安装到现有 DSH
 
-使用 **DSH 0.2.2-rc.2**。在 DSH Desktop 中打开 **Plugins → Add plugin**，输入下载的 `bot-org-hq-0.3.0.tgz` 的绝对路径，启用后从侧栏进入 BotOrgHQ。
+使用 **DSH 0.2.2-rc.2**。在 DSH Desktop 中打开 **Plugins → Add plugin**，输入下载的 `bot-org-hq-0.4.0.tgz` 的绝对路径，启用后从侧栏进入 BotOrgHQ。
 
 DSH Web 使用独立的 DSH CLI 和 pnpm。
 
 ```sh
-dsh plugin --profile web add /absolute/path/bot-org-hq-0.3.0.tgz
+dsh plugin --profile web add /absolute/path/bot-org-hq-0.4.0.tgz
 dsh web
 ```
 
@@ -108,7 +108,22 @@ npm --prefix desktop run dist
 
 开发启动使用 `npm --prefix desktop run prepare-runtime`，然后 `npm --prefix desktop start`。原生内核与数据重启检查使用 `node scripts/smoke-desktop.mjs`。
 
-GitHub Actions 在 `main` 的桌面版本号变动时构建 Windows x64、Mac arm64 和 Mac x64，也可从 Actions 手动运行。每个平台检查打包后的 DSH、Chief 会话、任务 API、备份和重启保留，再把三个安装包、插件和校验文件放到同一个桌面预发布 Release。升级时同步根目录和 `desktop` 的版本号与 lockfile。
+GitHub Actions 在 `main` 的桌面版本号变动时构建 Windows x64、Mac arm64 和 Mac x64，也可从 Actions 手动运行。每个平台检查打包后的 DSH、Chief 会话、任务 API、备份和重启保留，通过后把三个安装包和插件直接上传到 Release 草稿，校验文件齐全后再公开发布。PR 单独执行构建和工作台检查。升级时同步根目录和 `desktop` 的版本号与 lockfile。
 
 [上游集成和归属说明](docs/upstream.md)
 
+
+## 主动自治（0.4.0）
+
+公司工作台新增长期目标、主动活动、触发器、审批、自治设置和指标。
+自治默认关闭。启用后，Chief 可以在本机宿主运行期间定期检查授权目标并组织
+公司内部工作。主动模式使用已配置的 DSH 模型，并通过宿主限制能访问的数据
+与工具。当前覆盖公司内的资料分析和草稿工作。
+
+在桌面版使用 **帮助 → 导出或导入数据…**，可将完整本地 DSH 文件夹打包为
+密码加密的归档，迁移到另一台机器时先验证再切换。
+
+- [设置目标、授权、触发器和审批](docs/proactive-user-guide.md)
+- [升级、加密导出与回滚](docs/proactive-migration.md)
+- [执行边界、架构和兼容性](docs/proactive-architecture.md)
+- [变更记录](CHANGELOG.md)

@@ -115,7 +115,7 @@ export function createOrganisation(runtime, store) {
     }
     return permitted.filter(company => !companyId || company.id === companyId).map(company => ({
       ...company,
-      tasks: data.tasks.filter(task => task.companyId === company.id),
+      tasks: [...data.tasks.filter(task => task.companyId === company.id), ...proactiveTasks(company.id)],
       departments: data.departments.filter(item => item.companyId === company.id).map(department => ({
         ...department,
         employees: membersOf(data, department).map(({ botId, managerId }) => {
@@ -202,7 +202,7 @@ export function createOrganisation(runtime, store) {
       company_id: parameter('Company ID')
     }, (actor, args) => {
       permitCompany(actor, args.company_id);
-      return store.read().tasks.filter(task => task.companyId === args.company_id);
+      return [...store.read().tasks.filter(task => task.companyId === args.company_id), ...proactiveTasks(args.company_id)];
     });
 
     register('org_task_create', 'Create a to-do task on the company board. Assign yourself or a direct report. Chief may assign any employee or leave it unassigned. Creating a card does not send a message. Use org_delegate to dispatch work.', {
@@ -276,6 +276,15 @@ export function createOrganisation(runtime, store) {
     if (companyOf(sender.id) !== companyOf(target.id)) return 'This Bot is outside your BotOrgHQ company.';
   }
 
-  return { snapshot, registerTools, prompt, guardMessage, writable };
+  function checkDelegation(actorId, companyId, departmentId, employeeId) {
+    const actor = botOf(actorId);
+    if (!actor) throw new OrgError('Delegating Bot no longer exists.');
+    return targetOf(actor, { company_id: companyId, department_id: departmentId, employee_id: employeeId });
+  }
+
+  let proactiveTasks = () => [];
+  function setProactiveTasks(projectTasks) { proactiveTasks = projectTasks; }
+
+  return { snapshot, registerTools, prompt, guardMessage, writable, actorOf, checkDelegation, setProactiveTasks };
 }
 
