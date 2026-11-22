@@ -276,6 +276,6 @@ export function createOrganisation(runtime, store) {
     if (companyOf(sender.id) !== companyOf(target.id)) return 'This Bot is outside your BotOrgHQ company.';
   }
 
-  return { snapshot, registerTools, prompt, guardMessage, writable };
+  return { snapshot, registerTools, prompt, guardMessage, writable, actorOf };
 }
 

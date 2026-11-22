@@ -3,7 +3,11 @@
   "version": "0.3.0",
   "private": true,
   "description": "Company and department organisation charts for DeepSeek Harness",
-  "keywords": ["dsh-plugin", "deepseek-harness", "multi-agent"],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "multi-agent"
+  ],
   "type": "module",
   "main": "./index.js",
   "exports": {
@@ -11,22 +15,45 @@
     "./client": "./client.js",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "client.js", "src/organisation.mjs", "src/org-store.mjs", "cordis.patch.yml", "third-party"],
-  "engines": { "node": ">=24.9.0", "dsh": "0.2.2-rc.2" },
+  "files": [
+    "index.js",
+    "client.js",
+    "src/organisation.mjs",
+    "src/org-store.mjs",
+    "src/proactive/*.mjs",
+    "cordis.patch.yml",
+    "third-party"
+  ],
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": "0.2.2-rc.2"
+  },
   "dsh": {
     "client": {
       "platform": "web",
-      "external": ["react", "react-dom", "@deepseek-ai/dsh-client-ui-primitives"]
+      "external": [
+        "react",
+        "react-dom",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ]
     },
-    "bundle": { "patch": "./cordis.patch.yml" }
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   },
   "scripts": {
     "build": "node scripts/build-client.mjs",
     "prepack": "npm run build",
     "test": "node --test"
   },
-  "dependencies": { "ds-bot": "0.3.1" },
-  "peerDependencies": { "@deepseek-ai/dsh-tools": "*" },
-  "devDependencies": { "esbuild": "0.28.2" }
+  "dependencies": {
+    "cron-parser": "5.10.6",
+    "ds-bot": "0.3.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
 }
-
