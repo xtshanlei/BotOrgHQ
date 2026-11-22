@@ -1,0 +1,74 @@
+name: BotOrgHQ desktop checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            platform: win
+            arch: x64
+            extension: exe
+          - runner: macos-15
+            platform: mac
+            arch: arm64
+            extension: zip
+          - runner: macos-15-intel
+            platform: mac
+            arch: x64
+            extension: zip
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/package-desktop
+        id: package
+        with:
+          arch: ${{ matrix.arch }}
+          platform: ${{ matrix.platform }}
+          extension: ${{ matrix.extension }}
+      - name: Package the DSH plugin
+        if: matrix.platform == 'win'
+        run: npm pack --pack-destination desktop/dist
+
+  ui:
+    name: Verify company workspace in Chromium
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.22.1
+      - name: Prepare the embedded app and browser
+        run: |
+          npm ci --no-audit --no-fund
+          npm --prefix desktop ci --no-audit --no-fund
+          npm --prefix desktop run prepare-runtime
+          npm install --prefix "$RUNNER_TEMP/bohq-ui" --no-audit --no-fund playwright@1.65.0
+          node "$RUNNER_TEMP/bohq-ui/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Create and complete work through the UI
+        env:
+          PLAYWRIGHT_PACKAGE_JSON: ${{ runner.temp }}/bohq-ui/package.json
+          DSH_TELEMETRY_DISABLED: '1'
+        run: node scripts/smoke-ui.mjs

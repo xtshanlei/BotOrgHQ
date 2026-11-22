@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 (in review)
+## 0.4.0
 
 - Add persistent proactive goals, schedule and webhook triggers, scoped planning,
   delegation, evidence review, approval expiry and company audit.

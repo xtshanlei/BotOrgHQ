@@ -3,20 +3,48 @@ name: BotOrgHQ desktop release
 on:
   push:
     branches: [main]
-    paths: [desktop/package.json, scripts/smoke-ui.mjs, .github/workflows/desktop-release.yml]
-  pull_request:
-    branches: [main]
+    paths:
+      - desktop/package.json
+      - .github/workflows/desktop-release.yml
+      - .github/actions/package-desktop/action.yml
+      - .github/scripts/desktop-release.sh
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: desktop-release-${{ github.ref }}
-  cancel-in-progress: true
+  group: desktop-release-${{ github.repository }}
+  cancel-in-progress: false
+
+env:
+  GH_REPO: ${{ github.repository }}
 
 jobs:
+  stage:
+    name: Create or resume draft release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.stage.outputs.tag }}
+      build: ${{ steps.stage.outputs.build }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare the version draft
+        id: stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/desktop-release.sh stage
+
   build:
+    needs: stage
+    if: needs.stage.outputs.build == 'true'
+    permissions:
+      contents: write
     name: Build ${{ matrix.platform }} ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 40
@@ -43,86 +71,32 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: ./.github/actions/package-desktop
+        id: package
         with:
-          node-version: 24.22.1
-          architecture: ${{ matrix.arch }}
-      - name: Install dependencies and test
-        env:
-          TARGET_ARCH: ${{ matrix.arch }}
-        run: |
-          node -e 'if (process.arch !== process.env.TARGET_ARCH) throw Error("Unexpected runner architecture")'
-          npm ci --no-audit --no-fund
-          npm --prefix desktop ci --no-audit --no-fund
-          npm test
-      - name: Package the desktop app
-        env:
-          TARGET_ARCH: ${{ matrix.arch }}
-        run: npm --prefix desktop run dist -- "--$TARGET_ARCH"
-      - name: Start the embedded DSH from the packaged app
-        env:
-          DSH_TELEMETRY_DISABLED: '1'
-        run: |
-          runtime="$(find desktop/dist -type f \( -path '*/resources/runtime/host.mjs' -o -path '*/Resources/runtime/host.mjs' \) -print -quit)"
-          test -n "$runtime"
-          node scripts/smoke-desktop.mjs "$(dirname "$runtime")"
-      - name: Identify the installer
-        id: asset
-        env:
-          PLATFORM: ${{ matrix.platform }}
-          TARGET_ARCH: ${{ matrix.arch }}
-          EXTENSION: ${{ matrix.extension }}
-        run: |
-          version="$(node -p 'require("./desktop/package.json").version')"
-          file="desktop/dist/BotOrgHQ-${version}-${PLATFORM}-${TARGET_ARCH}.${EXTENSION}"
-          test -s "$file"
-          printf 'path=%s\n' "$file" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        with:
-          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
-          path: ${{ steps.asset.outputs.path }}
-          if-no-files-found: error
-          compression-level: 0
+          arch: ${{ matrix.arch }}
+          platform: ${{ matrix.platform }}
+          extension: ${{ matrix.extension }}
       - name: Package the DSH plugin
         if: matrix.platform == 'win'
         run: npm pack --pack-destination desktop/dist
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: matrix.platform == 'win' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        with:
-          name: desktop-plugin
-          path: desktop/dist/bot-org-hq-*.tgz
-          if-no-files-found: error
-
-
-  ui:
-    name: Verify company workspace in Chromium
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 24.22.1
-      - name: Prepare the embedded app and browser
-        run: |
-          npm ci --no-audit --no-fund
-          npm --prefix desktop ci --no-audit --no-fund
-          npm --prefix desktop run prepare-runtime
-          npm install --prefix "$RUNNER_TEMP/bohq-ui" --no-audit --no-fund playwright@1.65.0
-          node "$RUNNER_TEMP/bohq-ui/node_modules/playwright/cli.js" install --with-deps chromium
-      - name: Create and complete work through the UI
+      - name: Upload verified packages to the draft
         env:
-          PLAYWRIGHT_PACKAGE_JSON: ${{ runner.temp }}/bohq-ui/package.json
-          DSH_TELEMETRY_DISABLED: '1'
-        run: node scripts/smoke-ui.mjs
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.stage.outputs.tag }}
+          INSTALLER: ${{ steps.package.outputs.installer }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          files=("$INSTALLER")
+          if [ "$PLATFORM" = win ]; then
+            version="${TAG#v}"
+            files+=("desktop/dist/bot-org-hq-${version%-desktop}.tgz")
+          fi
+          bash .github/scripts/desktop-release.sh upload "${files[@]}"
 
   publish:
     name: Publish the desktop downloads together
-    needs: [build, ui]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [stage, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -130,51 +104,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          pattern: desktop-*
-          path: assets
-          merge-multiple: true
-      - name: Attach packages and publish
+      - name: Verify the draft assets, attach checksums and publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          version="$(node -p 'require("./desktop/package.json").version')"
-          tag="v${version}-desktop"
-          windows="BotOrgHQ-${version}-win-x64.exe"
-          apple="BotOrgHQ-${version}-mac-arm64.zip"
-          intel="BotOrgHQ-${version}-mac-x64.zip"
-          plugin="bot-org-hq-${version}.tgz"
-          files=("$windows" "$apple" "$intel" "$plugin")
-          for file in "${files[@]}"; do test -s "assets/$file"; done
-          (cd assets && sha256sum "${files[@]}" > SHA256SUMS.txt)
-          cat > release-notes.md <<EOF
-          Includes DeepSeek Harness 0.2.2-rc.2, proactive company goals, scheduling, approvals and encrypted profile transfer.
-
-          - Each company has To-do, In progress, Waiting, Finished and Aborted columns. Cards include owners, outcomes, acceptance criteria, results, evidence and an edit history.
-          - People and Bots can add departments and edit reporting within a company. Reporting cycles and cross-company managers are rejected.
-          - In-app updates are available through Help → Check for updates (macOS also has BotOrgHQ → Check for updates). Downloads are SHA-256 verified. DSH is stopped and its full data directory is backed up before installation.
-          - Existing user data is reused and backed up before the new runtime starts. Autonomy starts OFF until enabled by the profile owner.
-          - Private repository updates require a repository Contents-read GitHub token, saved using the operating system secure storage. Public repositories work without a token.
-
-          | System | Download |
-          | --- | --- |
-          | Windows x64 | [$windows](https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$windows) |
-          | macOS Apple Silicon | [$apple](https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$apple) |
-          | macOS Intel | [$intel](https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$intel) |
-
-          DSH plugin package: [$plugin](https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$plugin).
-
-          The Windows installer is unsigned. The macOS apps are ad-hoc signed and are not notarised. Use SHA256SUMS.txt to verify the downloads.
-          EOF
-          if gh release view "$tag" --json isDraft,targetCommitish > release.json 2>/dev/null; then
-            jq -e --arg commit "$GITHUB_SHA" '.isDraft and .targetCommitish == $commit' release.json >/dev/null
-          else
-            gh release create "$tag" --draft --prerelease --target "$GITHUB_SHA" \
-              --title "BotOrgHQ $version Desktop" --notes-file release-notes.md
-          fi
-          gh release upload "$tag" "assets/$windows" "assets/$apple" "assets/$intel" "assets/$plugin" assets/SHA256SUMS.txt --clobber
-          gh release edit "$tag" --draft=false
-          gh release view "$tag" --json url,isDraft,assets --jq '{url,isDraft,assets:[.assets[].name]}'
-
+          TAG: ${{ needs.stage.outputs.tag }}
+        run: bash .github/scripts/desktop-release.sh publish

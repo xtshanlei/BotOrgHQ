@@ -1,0 +1,57 @@
+name: Build and verify native desktop package
+description: Build BotOrgHQ with its embedded DSH and test the packaged runtime
+inputs:
+  arch:
+    description: Native Node architecture
+    required: true
+  platform:
+    description: Desktop artifact platform
+    required: true
+  extension:
+    description: Desktop artifact file extension
+    required: true
+outputs:
+  installer:
+    description: Path to the native desktop installer
+    value: ${{ steps.asset.outputs.path }}
+runs:
+  using: composite
+  steps:
+  - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+    with:
+      node-version: 24.22.1
+      architecture: ${{ inputs.arch }}
+  - shell: bash
+    name: Install dependencies and test
+    env:
+      TARGET_ARCH: ${{ inputs.arch }}
+    run: |
+      node -e 'if (process.arch !== process.env.TARGET_ARCH) throw Error("Unexpected runner architecture")'
+      npm ci --no-audit --no-fund
+      npm --prefix desktop ci --no-audit --no-fund
+      npm test
+  - shell: bash
+    name: Package the desktop app
+    env:
+      TARGET_ARCH: ${{ inputs.arch }}
+    run: npm --prefix desktop run dist -- "--$TARGET_ARCH"
+  - shell: bash
+    name: Start the embedded DSH from the packaged app
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+    run: |
+      runtime="$(find desktop/dist -type f \( -path '*/resources/runtime/host.mjs' -o -path '*/Resources/runtime/host.mjs' \) -print -quit)"
+      test -n "$runtime"
+      node scripts/smoke-desktop.mjs "$(dirname "$runtime")"
+  - shell: bash
+    name: Identify the installer
+    id: asset
+    env:
+      PLATFORM: ${{ inputs.platform }}
+      TARGET_ARCH: ${{ inputs.arch }}
+      EXTENSION: ${{ inputs.extension }}
+    run: |
+      version="$(node -p 'require("./desktop/package.json").version')"
+      file="desktop/dist/BotOrgHQ-${version}-${PLATFORM}-${TARGET_ARCH}.${EXTENSION}"
+      test -s "$file"
+      printf 'path=%s\n' "$file" >> "$GITHUB_OUTPUT"
