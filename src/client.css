@@ -110,3 +110,17 @@
 @media (max-width: 650px) { .bohq-content { padding: 18px 12px 24px; } }
 @media (prefers-reduced-motion: reduce) { .bohq-status i { animation: none !important; } }
 
+
+.bohq-tabs { flex-wrap: wrap; }
+.bohq-pro-content { padding: 16px 18px 24px; }
+.bohq-pro-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
+.bohq-pro-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.bohq-pro-form .bohq-checkbox { display: flex; min-width: 0; align-items: center; }
+.bohq-pro-card { padding: 12px 14px; margin: 10px 0; border: 1px solid var(--bohq-line); border-radius: 9px; overflow-wrap: anywhere; }
+.bohq-pro-card p { margin: 4px 0; white-space: pre-wrap; }
+.bohq-pro-card .bohq-actions, .bohq-pro-card .bohq-form { margin-top: 10px; }
+.bohq-pro-tools { display: grid; grid-template-columns: minmax(130px, 1fr) repeat(3, 55px); align-items: center; gap: 6px; }
+.bohq-pro-tools input { justify-self: start; }
+.bohq-pro-line { padding-bottom: 8px; }
+.bohq-metrics { display: grid; grid-template-columns: 140px 1fr; gap: 9px; }
+.bohq-metrics dd { margin: 0; }

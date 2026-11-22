@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './client.css';
+import { ProactivePanel, proactiveTabs } from './proactive-panel.jsx';
 import { ReportingForm, TaskBoard } from './task-board.jsx';
 
 export const inject = ['slots', 'uiWorkspace'];
@@ -219,7 +220,8 @@ function OrganisationPanel({ openSession }) {
       {error && <p className="bohq-error" role="alert">{error}</p>}
       {!view && !connectionError && <p role="status">正在加载组织架构…</p>}
       {view && !company && <p className="bohq-empty">新建公司，或在 Chief 对话里让它创建公司和部门。</p>}
-      {company && <nav className="bohq-tabs" aria-label="公司视图"><button aria-pressed={tab === 'organisation'} onClick={() => setTab('organisation')}>组织架构</button><button aria-pressed={tab === 'tasks'} onClick={() => setTab('tasks')}>任务看板</button></nav>}
+      {company && <nav className="bohq-tabs" aria-label="公司视图"><button aria-pressed={tab === 'organisation'} onClick={() => setTab('organisation')}>组织架构</button><button aria-pressed={tab === 'tasks'} onClick={() => setTab('tasks')}>任务看板</button>{proactiveTabs.map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</nav>}
+      {company && proactiveTabs.some(([id]) => id === tab) && <ProactivePanel key={company.id + ':' + tab} kind={tab} company={company} call={call} disabled={disabled} />}
       {company && tab === 'tasks' && <TaskBoard key={company.id} company={company} disabled={disabled} mutate={mutate} openSession={openSession} />}
       {company && tab === 'organisation' && <section className="bohq-panel" aria-label={department ? '部门员工' : '部门架构'}>
         <header className="bohq-panel-head">
