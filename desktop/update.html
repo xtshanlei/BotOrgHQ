@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>BotOrgHQ 更新</title><link rel="stylesheet" href="update.css"></head>
-<body><main><p class="brand">BotOrgHQ</p><h1>软件更新</h1><p id="version"></p><p id="message" role="status" aria-live="polite"></p>
+<title data-i18n="BotOrgHQ Updates">BotOrgHQ Updates</title><link rel="stylesheet" href="update.css"></head>
+<body><main><p class="brand">BotOrgHQ</p><h1 data-i18n="Software update">Software update</h1><p id="version"></p><p id="message" role="status" aria-live="polite"></p>
 <progress id="progress" max="100" hidden></progress>
-<div class="actions"><button id="check">检查更新</button><button id="download" hidden>下载更新</button><button id="install" hidden>备份并安装更新</button></div>
-<p class="note">升级继续使用原来的数据目录。安装前会备份 DSH 的配置、Bot、公司、部门、任务、对话和记忆。</p><button id="backups">打开备份文件夹</button>
-<details><summary>私有 GitHub 仓库访问</summary><p>私有仓库需要具有 BotOrgHQ 仓库 Contents 读取权限的 GitHub Token。公开仓库可以留空。</p>
-<label>GitHub Token<input id="token" type="password" autocomplete="off" placeholder="留空并保存可清除 Token"></label><button id="save-token">加密保存 Token</button><p id="token-state" role="status"></p></details>
-<details id="transfer"><summary>导出或导入完整数据</summary>
-<p>加密归档包含本地 DSH 配置、Bot、组织、对话、附件、记忆、任务与主动工作记录。</p>
-<label>恢复密码<input id="transfer-password" type="password" autocomplete="new-password" minlength="12" placeholder="至少 12 个字符"></label>
-<div class="actions"><button id="export">导出加密归档…</button><button id="import">从归档导入…</button></div>
+<div class="actions"><button id="check" data-i18n="Check for updates">Check for updates</button><button id="download" hidden data-i18n="Download update">Download update</button><button id="install" hidden data-i18n="Back up and install update">Back up and install update</button></div>
+<p class="note" data-i18n="Updates keep using the same data directory. Before installing, BotOrgHQ backs up DSH settings, Bots, companies, departments, tasks, conversations, and memories.">Updates keep using the same data directory. Before installing, BotOrgHQ backs up DSH settings, Bots, companies, departments, tasks, conversations, and memories.</p><button id="backups" data-i18n="Open backups folder">Open backups folder</button>
+<details><summary data-i18n="Private GitHub repository access">Private GitHub repository access</summary><p data-i18n="A private repository requires a GitHub token with read access to Contents on the BotOrgHQ repository. Leave this blank for public repositories.">A private repository requires a GitHub token with read access to Contents on the BotOrgHQ repository. Leave this blank for public repositories.</p>
+<label>GitHub Token<input id="token" type="password" autocomplete="off" placeholder="Save a blank value to clear the token" data-i18n-placeholder="Save a blank value to clear the token"></label><button id="save-token" data-i18n="Encrypt and save token">Encrypt and save token</button><p id="token-state" role="status"></p></details>
+<details id="transfer"><summary data-i18n="Export or import all data">Export or import all data</summary>
+<p data-i18n="The encrypted archive includes local DSH settings, Bots, organisations, conversations, attachments, memories, tasks, and proactive work history.">The encrypted archive includes local DSH settings, Bots, organisations, conversations, attachments, memories, tasks, and proactive work history.</p>
+<label> <span data-i18n="Recovery passphrase">Recovery passphrase</span><input id="transfer-password" type="password" autocomplete="new-password" minlength="12" placeholder="At least 12 characters" data-i18n-placeholder="At least 12 characters"></label>
+<div class="actions"><button id="export" data-i18n="Export encrypted archive…">Export encrypted archive…</button><button id="import" data-i18n="Import from archive…">Import from archive…</button></div>
 <p id="transfer-state" role="status"></p></details>
-<details><summary>后台运行与通知</summary>
-<label><span><input id="background" type="checkbox"> 关闭主窗口后保持 BotOrgHQ 运行</span></label>
-<label><span><input id="os-notifications" type="checkbox"> 接收系统通知</span></label>
-<button id="save-preferences">保存设置</button><p id="preferences-state" role="status"></p></details>
+<details><summary data-i18n="Background operation and notifications">Background operation and notifications</summary>
+<label><span><input id="background" type="checkbox"> <span data-i18n="Keep BotOrgHQ running after closing the main window">Keep BotOrgHQ running after closing the main window</span></span></label>
+<label><span><input id="os-notifications" type="checkbox"> <span data-i18n="Receive system notifications">Receive system notifications</span></span></label>
+<button id="save-preferences" data-i18n="Save settings">Save settings</button><p id="preferences-state" role="status"></p></details>
 </main><script src="update-ui.js"></script></body></html>

@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import styles from './client.css';
+import { workbenchLocale } from './messages.mjs';
 import { ProactivePanel, proactiveTabs } from './proactive-panel.jsx';
 import { ReportingForm, TaskBoard } from './task-board.jsx';
+import { WorkbenchLocale, useTranslation } from './use-locale.jsx';
 
-export const inject = ['slots', 'uiWorkspace'];
+export const inject = ['slots', 'uiWorkspace', 'locale'];
 const panelId = 'bot-org-hq';
-const statusNames = { idle: '空闲', working: '工作中', approval: '待审批', waiting: '等待交付', blocked: '需处理' };
+const statusNames = { idle: 'Idle', working: 'Working', approval: 'Awaiting approval', waiting: 'Awaiting delivery', blocked: 'Needs attention' };
 let selection = { companyId: null, departmentId: null };
 
 async function call(action, fields = {}, signal) {
@@ -15,7 +17,7 @@ async function call(action, fields = {}, signal) {
     body: JSON.stringify({ action, ...fields })
   });
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error ?? '无法连接 BotOrgHQ。');
+  if (!response.ok) throw new Error(result.error ?? 'Could not connect to BotOrgHQ.');
   return result.value;
 }
 
@@ -35,12 +37,14 @@ export function Launcher({ wide, onOpen }) {
 }
 
 function Status({ status }) {
-  return <span className="bohq-status" data-status={status}><i aria-hidden="true" />{statusNames[status]}</span>;
+  const { t } = useTranslation();
+  return <span className="bohq-status" data-status={status}><i aria-hidden="true" />{t(statusNames[status] ?? 'Idle')}</span>;
 }
 
 function DepartmentChart({ company, openDepartment }) {
-  if (!company.departments.length) return <p className="bohq-empty">这家公司还没有部门。可以在这里添加，或请 Chief 创建。</p>;
-  return <div className="bohq-canvas" tabIndex="0" aria-label="部门组织图">
+  const { t } = useTranslation();
+  if (!company.departments.length) return <p className="bohq-empty">{t('Add the first department here or ask the Chief to create one.')}</p>;
+  return <div className="bohq-canvas" tabIndex="0" aria-label={t('Department organisation chart')}>
     <ul className="bohq-tree">
       <li>
         <div className="bohq-root"><Icon /><strong>{company.name}</strong></div>
@@ -49,8 +53,8 @@ function DepartmentChart({ company, openDepartment }) {
           return <li key={department.id} data-active={active > 0}>
             <button className="bohq-node" data-status={active ? 'working' : undefined} onClick={() => openDepartment(department.id)}>
               <strong>{department.name}</strong>
-              <span>{department.employees.length} 名员工 · {active} 工作中</span>
-              <span className="bohq-node-action">查看部门 →</span>
+              <span>{t('Employees: {count} · Working: {active}', { count: department.employees.length, active })}</span>
+              <span className="bohq-node-action">{t('View department →')}</span>
             </button>
           </li>;
         })}</ul>
@@ -60,13 +64,14 @@ function DepartmentChart({ company, openDepartment }) {
 }
 
 function EmployeeBranch({ employee, childrenByManager, activePath, openSession }) {
+  const { t, status } = useTranslation();
   const reports = childrenByManager.get(employee.id) ?? [];
   return <li data-active={activePath.has(employee.id)}>
     <button className="bohq-node" data-status={employee.status} onClick={() => openSession(employee.sessionId)}>
       <strong>{employee.name}</strong>
       <span>{employee.role}</span>
       <Status status={employee.status} />
-      {employee.proactive && <span title={[employee.proactive.task, employee.proactive.goalId].filter(Boolean).join(' · ')}>主动 · {employee.proactive.status}</span>}
+      {employee.proactive && <span title={[employee.proactive.task, employee.proactive.goalId].filter(Boolean).join(' · ')}>{t('Proactive · {status}', { status: status(employee.proactive.status) })}</span>}
       {employee.tool && <span className="bohq-tool">{employee.tool}</span>}
     </button>
     {reports.length > 0 && <ul>{reports.map(report =>
@@ -76,7 +81,8 @@ function EmployeeBranch({ employee, childrenByManager, activePath, openSession }
 }
 
 function EmployeeChart({ company, department, openSession }) {
-  if (!department.employees.length) return <p className="bohq-empty">这个部门还没有员工。请 Chief 先聘用部门负责人，再为负责人安排直属下属。</p>;
+  const { t } = useTranslation();
+  if (!department.employees.length) return <p className="bohq-empty">{t('Ask the Chief to add a department lead and assign employees to them.')}</p>;
   const byId = new Map(department.employees.map(employee => [employee.id, employee]));
   const childrenByManager = new Map();
   const activePath = new Set();
@@ -89,12 +95,12 @@ function EmployeeChart({ company, department, openSession }) {
       activePath.add(current.id);
     }
   }
-  return <div className="bohq-canvas" tabIndex="0" aria-label="员工汇报层级">
+  return <div className="bohq-canvas" tabIndex="0" aria-label={t('Employee reporting lines')}>
     <ul className="bohq-tree">
       {department.employees.filter(employee => !byId.has(employee.managerId)).map(employee => {
         const managerDepartment = company.departments.find(item => item.employees.some(manager => manager.id === employee.managerId));
         const manager = managerDepartment?.employees.find(item => item.id === employee.managerId);
-        return <li key={employee.id}>{manager && <div className="bohq-root"><button onClick={() => openSession(manager.sessionId)}>直属上级 · {manager.name} · {managerDepartment.name} ↗</button></div>}
+        return <li key={employee.id}>{manager && <div className="bohq-root"><button onClick={() => openSession(manager.sessionId)}>{t('Direct manager · {name} · {department} ↗', { name: manager.name, department: managerDepartment.name })}</button></div>}
           <ul><EmployeeBranch employee={employee} childrenByManager={childrenByManager} activePath={activePath} openSession={openSession} /></ul></li>;
       })}
     </ul>
@@ -102,22 +108,24 @@ function EmployeeChart({ company, department, openSession }) {
 }
 
 function CreateForm({ kind, submit, cancel, saving }) {
-  const label = kind === 'company' ? '公司' : '部门';
+  const { t } = useTranslation();
+  const company = kind === 'company';
   return <form className="bohq-form" onSubmit={event => {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
     void submit({ name: fields.get('name'), mission: fields.get('mission') });
   }}>
-    <label>{label}名称<input name="name" required maxLength={48} /></label>
-    <label>{label}职责<input name="mission" maxLength={500} /></label>
+    <label>{t(company ? 'Company name' : 'Department name')}<input name="name" required maxLength={48} /></label>
+    <label>{t(company ? 'Company mission' : 'Department mission')}<input name="mission" maxLength={500} /></label>
     <div className="bohq-actions">
-      <button type="button" onClick={cancel} disabled={saving}>取消</button>
-      <button className="bohq-primary" disabled={saving}>{saving ? '保存中…' : '创建' + label}</button>
+      <button type="button" onClick={cancel} disabled={saving}>{t('Cancel')}</button>
+      <button className="bohq-primary" disabled={saving}>{saving ? t('Saving…') : t(company ? 'Create company' : 'Create department')}</button>
     </div>
   </form>;
 }
 
 function OrganisationPanel({ openSession }) {
+  const { t, locale } = useTranslation();
   const [view, setView] = useState(null);
   const [current, setCurrent] = useState(selection);
   const [create, setCreate] = useState(null);
@@ -193,56 +201,86 @@ function OrganisationPanel({ openSession }) {
     }
   }
 
-  return <main className="bohq">
+  return <main className="bohq" lang={locale}>
     <div className="bohq-content">
       <header className="bohq-header">
-        <div><p className="bohq-kicker"><Icon /> BotOrgHQ</p><h1>{department?.name ?? company?.name ?? '公司工作台'}</h1>
-          <p className="bohq-muted">{department?.mission || company?.mission || '在 DeepSeek Harness 内管理公司、部门和 Bot 员工。'}</p>
+        <div><p className="bohq-kicker"><Icon /> BotOrgHQ</p><h1>{department?.name ?? company?.name ?? t('Company workbench')}</h1>
+          <p className="bohq-muted">{department?.mission || company?.mission || t('Manage companies, departments, and Bots in DeepSeek Harness.')}</p>
         </div>
-        <button className="bohq-primary" disabled={!chief?.sessionId} onClick={() => openSession(chief.sessionId)}>打开集团 Chief ↗</button>
+        <button className="bohq-primary" disabled={!chief?.sessionId} onClick={() => openSession(chief.sessionId)}>{t('Open Group Chief ↗')}</button>
       </header>
-      {connectionError && <p className="bohq-error" role="alert">{connectionError}</p>}
+      {connectionError && <p className="bohq-error" role="alert">{t(connectionError)}</p>}
       {view?.readOnly && <p className="bohq-error" role="status">{view.readOnly}</p>}
       <div className="bohq-bar">
-        <label>当前公司
+        <LanguagePicker />
+        <label>{t('Current company')}
           <select value={company?.id ?? ''} disabled={!company || saving} onChange={event => select(event.target.value)}>
-            {!company && <option value="">选择公司</option>}
+            {!company && <option value="">{t('Select a company')}</option>}
             {view?.companies.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </label>
         <div className="bohq-actions">
-          <button disabled={!view || !!view.readOnly || saving} onClick={() => { setError(''); setCreate('company'); }}>＋ 新建公司</button>
-          {company && <button disabled={!!view.readOnly || saving} onClick={() => { setError(''); setCreate('department'); }}>＋ 新建部门</button>}
-          {company && <button disabled={disabled} onClick={() => { setError(''); setCreate('reporting'); }}>修改部门 / 直属关系</button>}
+          <button disabled={!view || !!view.readOnly || saving} onClick={() => { setError(''); setCreate('company'); }}>{t('＋ New company')}</button>
+          {company && <button disabled={!!view.readOnly || saving} onClick={() => { setError(''); setCreate('department'); }}>{t('＋ New department')}</button>}
+          {company && <button disabled={disabled} onClick={() => { setError(''); setCreate('reporting'); }}>{t('Edit department / reporting line')}</button>}
         </div>
       </div>
       {create === 'reporting' && <ReportingForm key={company.id} company={company} disabled={disabled} mutate={mutate} cancel={() => setCreate(null)} />}
       {create && create !== 'reporting' && <CreateForm key={create} kind={create} submit={submit} cancel={() => { setCreate(null); setError(''); }} saving={saving} />}
-      {error && <p className="bohq-error" role="alert">{error}</p>}
-      {!view && !connectionError && <p role="status">正在加载组织架构…</p>}
-      {view && !company && <p className="bohq-empty">新建公司，或在 Chief 对话里让它创建公司和部门。</p>}
-      {company && <nav className="bohq-tabs" aria-label="公司视图"><button aria-pressed={tab === 'organisation'} onClick={() => setTab('organisation')}>组织架构</button><button aria-pressed={tab === 'tasks'} onClick={() => setTab('tasks')}>任务看板</button>{proactiveTabs.map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</nav>}
+      {error && <p className="bohq-error" role="alert">{t(error)}</p>}
+      {!view && !connectionError && <p role="status">{t('Loading organisation…')}</p>}
+      {view && !company && <p className="bohq-empty">{t('Create a company here or ask the Chief to set one up with its departments.')}</p>}
+      {company && <nav className="bohq-tabs" aria-label={t('Company views')}><button aria-pressed={tab === 'organisation'} onClick={() => setTab('organisation')}>{t('Organisation')}</button><button aria-pressed={tab === 'tasks'} onClick={() => setTab('tasks')}>{t('Task board')}</button>{proactiveTabs.map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{t(label)}</button>)}</nav>}
       {company && proactiveTabs.some(([id]) => id === tab) && <ProactivePanel key={company.id + ':' + tab} kind={tab} company={company} call={call} disabled={disabled} />}
       {company && tab === 'tasks' && <TaskBoard key={company.id} company={company} disabled={disabled} mutate={mutate} openSession={openSession} />}
-      {company && tab === 'organisation' && <section className="bohq-panel" aria-label={department ? '部门员工' : '部门架构'}>
+      {company && tab === 'organisation' && <section className="bohq-panel" aria-label={department ? t('Department employees') : t('Department structure')}>
         <header className="bohq-panel-head">
           <div>
-            {department && <button className="bohq-back" onClick={() => select(company.id)}>← 返回部门架构</button>}
-            <h2>{department ? '员工汇报层级' : '部门架构'}</h2>
-            <p>{department ? '点击员工打开 DSH 对话。' : '点击一个部门，查看里面的员工和汇报关系。'}</p>
+            {department && <button className="bohq-back" onClick={() => select(company.id)}>{t('← Back to departments')}</button>}
+            <h2>{department ? t('Employee reporting lines') : t('Department structure')}</h2>
+            <p>{department ? t('Select an employee to open their DSH conversation.') : t('Select a department to see its employees and reporting lines.')}</p>
           </div>
-          <span className="bohq-chip">{department ? department.employees.length + ' 名员工' : company.departments.length + ' 个部门'}</span>
+          <span className="bohq-chip">{department ? t('Employees · {count}', { count: department.employees.length })
+            : t('Departments · {count}', { count: company.departments.length })}</span>
         </header>
         {department
           ? <EmployeeChart company={company} department={department} openSession={openSession} />
           : <DepartmentChart company={company} openDepartment={id => select(company.id, id)} />}
       </section>}
-      <p className="bohq-note">在 Chief 对话中说明公司、部门、岗位和汇报对象，即可由 Chief 创建员工并安排工作。</p>
+      <p className="bohq-note">{t('Tell the Chief the company, department, role, and manager when asking it to add an employee and assign work.')}</p>
     </div>
   </main>;
 }
 
+function LanguagePicker() {
+  const { active, t, setLocale } = useTranslation();
+  const labelId = useId();
+  const [error, setError] = useState(false);
+  return <div>
+    <label><span id={labelId}>{t('Language')}</span><select aria-labelledby={labelId} value={active} onChange={event => {
+      try { setLocale(event.target.value); setError(false); }
+      catch { setError(true); }
+    }}>
+      {active !== 'en' && active !== 'zh' && <option value={active} disabled>{t('DSH language')}</option>}
+      <option value="en">English</option><option value="zh">简体中文</option>
+    </select></label>
+    {error && <p role="alert" className="bohq-error">{t('Could not change language. Please try again.')}</p>}
+  </div>;
+}
+
+function LocalisedPanel({ service, openSession }) {
+  return <WorkbenchLocale service={service}><OrganisationPanel openSession={openSession} /></WorkbenchLocale>;
+}
+
 export function apply(ctx) {
+  const locale = ctx.get('locale');
+  ctx.effect(() => {
+    const desktop = window.botorghqDesktop;
+    if (!desktop) return;
+    const sync = () => void desktop.setLocale(workbenchLocale(locale.getLocale().active)).catch(() => {});
+    sync();
+    return locale.subscribe(sync);
+  }, 'BotOrgHQ desktop language');
   ctx.effect(() => {
     const sheet = document.createElement('style');
     sheet.textContent = styles;
@@ -250,8 +288,8 @@ export function apply(ctx) {
     return () => sheet.remove();
   }, 'BotOrgHQ styles');
   ctx.slots.inject('main', () => ctx.slots.register({
-    name: 'main', key: panelId, inject: () => ({ openSession: id => ctx.uiWorkspace.openSession(id) })
-  }, OrganisationPanel));
+    name: 'main', key: panelId, inject: () => ({ service: locale, openSession: id => ctx.uiWorkspace.openSession(id) })
+  }, LocalisedPanel));
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
     name: 'sidebar.panellist', id: panelId, order: 15, label: 'BotOrgHQ'
   }, Icon));

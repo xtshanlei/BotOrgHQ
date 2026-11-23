@@ -9,6 +9,8 @@ files:
   - data.mjs
   - profile-transfer.mjs
   - updates.mjs
+  - messages.mjs
+  - workspace-preload.cjs
   - update-preload.cjs
   - update.html
   - update.css

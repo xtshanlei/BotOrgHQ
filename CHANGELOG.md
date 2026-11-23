@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1
+
+- Add English and Simplified Chinese to the BotOrgHQ workbench, including the
+  organisation chart, task board, goals, triggers, approvals and audit views.
+- Use the existing DSH language preference for both the plugin and desktop app.
+  The desktop app also localises its menus, notifications, update and data transfer UI.
+- Rewrite the English and Chinese READMEs around recurring goals, delegation,
+  human control and reviewable evidence.
+
 ## 0.4.0
 
 - Add persistent proactive goals, schedule and webhook triggers, scoped planning,

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="360" viewBox="0 0 1000 360" xml:lang="zh-CN" role="img" aria-labelledby="title desc">
+  <title id="title">从目标到证据</title>
+  <desc id="desc">Chief Bot 向研究部和编辑部分派任务。看板记录负责人、验收标准和证据。</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#111E32"/>
+      <stop offset="1" stop-color="#0A111E"/>
+    </linearGradient>
+    <linearGradient id="accent" x2="1" y2="0">
+      <stop stop-color="#53DAE2"/>
+      <stop offset="1" stop-color="#80A4FF"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0v24" fill="none" stroke="#8DADD1" stroke-opacity=".09"/>
+    </pattern>
+    <clipPath id="edge">
+      <rect width="1000" height="360" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#edge)">
+    <rect width="1000" height="360" fill="url(#background)"/>
+    <rect width="1000" height="360" fill="url(#grid)"/>
+    <path d="M0 0h1000" stroke="url(#accent)" stroke-width="5"/>
+    <rect x="1" y="1" width="998" height="358" rx="23" fill="none" stroke="#344761"/>
+  </g>
+
+  <g font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <text x="44" y="60" fill="#F3F8FF" font-size="31" font-weight="700">从目标到证据</text>
+    <text x="45" y="89" fill="#ADBED4" font-size="16">BotOrgHQ 团队分派和复核工作的示例</text>
+
+    <rect x="44" y="115" width="408" height="202" rx="16" fill="#131F31" stroke="#354760"/>
+    <text x="65" y="144" fill="#B5C8DF" font-size="14" font-weight="700" letter-spacing="1.8">公司组织</text>
+    <path d="M248 207v18M144 242v-17h208v17" fill="none" stroke="#83A2D0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="168" y="161" width="160" height="46" rx="9" fill="#213650" stroke="#6596CC"/>
+    <circle cx="193" cy="184" r="5" fill="#65D8E1"/>
+    <text x="209" y="190" fill="#F3F8FF" font-size="17" font-weight="650">Chief Bot</text>
+    <rect x="65" y="243" width="158" height="49" rx="9" fill="#1A2B42" stroke="#3C5572"/>
+    <rect x="273" y="243" width="158" height="49" rx="9" fill="#1A2B42" stroke="#3C5572"/>
+    <text x="144" y="274" text-anchor="middle" fill="#E9F2FF" font-size="17" font-weight="650">研究部</text>
+    <text x="352" y="274" text-anchor="middle" fill="#E9F2FF" font-size="17" font-weight="650">编辑部</text>
+
+    <path d="M465 216h61m-11-7 11 7-11 7" fill="none" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="548" y="115" width="408" height="202" rx="16" fill="#131F31" stroke="#354760"/>
+    <text x="569" y="144" fill="#B5C8DF" font-size="14" font-weight="700" letter-spacing="1.8">任务看板</text>
+    <rect x="569" y="161" width="366" height="131" rx="10" fill="#1A2B42" stroke="#3C5572"/>
+    <rect x="834" y="174" width="84" height="24" rx="12" fill="#173C40" stroke="#3F686B"/>
+    <text x="876" y="190" text-anchor="middle" fill="#9FEBDD" font-size="12" font-weight="650">已完成</text>
+    <text x="586" y="192" fill="#F3F8FF" font-size="18" font-weight="650">核查资料来源</text>
+    <path d="M586 207h332" stroke="#3F536B"/>
+    <text x="586" y="231" fill="#AAC0D9" font-size="14">负责人</text>
+    <text x="683" y="231" fill="#EDF5FF" font-size="14">研究分析员</text>
+    <text x="586" y="253" fill="#AAC0D9" font-size="14">验收标准</text>
+    <text x="683" y="253" fill="#EDF5FF" font-size="14">三个可追溯来源</text>
+    <text x="586" y="275" fill="#AAC0D9" font-size="14">证据</text>
+    <text x="683" y="275" fill="#EDF5FF" font-size="14">带注释的来源记录</text>
+  </g>
+</svg>

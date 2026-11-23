@@ -1,114 +1,84 @@
 # BotOrgHQ
 
-**让 AI 团队按公司协作，任务有负责人，结果有证据可查。**
+**给 AI 团队一个目标，让它持续推进。**
 
-BotOrgHQ 是 DeepSeek Harness（DSH）的公司工作台。你可以建立公司和部门，由集团 Chief 分派任务，在组织图里查看 Bot 的汇报关系和工作状态，并从看板追踪每项任务的验收标准、结果和证据。
+设定一次长期目标。只要 DeepSeek Harness（DSH）在运行，Chief Bot 就能按计划或订阅事件复查目标，把工作分派给合适的部门，并交付带证据的结果。权限、预算和审批规则由你设定，工作可以随时暂停。
 
-[**下载 v0.4.0**](#下载) · [快速上手](#快速上手) · [主动自治](#主动自治) · [English](README.md)
+**[下载 macOS 或 Windows 版](#下载)** · [从一个目标开始](#快速开始) · [English](README.md)
 
-![BotOrgHQ 协作示意图，展示 Chief 向两个部门分派工作，以及任务卡上的负责人、验收标准和证据](docs/media/company-workflow.svg)
+![Chief Bot 向不同部门分派工作，任务卡展示负责人、验收标准和证据](docs/media/company-workflow.zh-CN.svg)
+
+## 为什么用 BotOrgHQ
+
+| 你需要什么 | BotOrgHQ 如何做到 |
+| --- | --- |
+| **两次对话之间也有进展** | 授权目标保留负责人、成功标准、复查计划和历史。到了复查时间，Chief 可以继续推进，无需你再发一条消息。 |
+| **每个交付件都有负责人** | 公司、部门和汇报线为 Chief 提供分工依据。公司看板展示谁负责、预期交付什么、做到哪一步、证据在哪里。点击员工可打开其原生 DSH 对话。 |
+| **你决定哪些工作可以执行** | 以公司、部门或 Bot 为粒度设定数据与工具范围、预算和审批规则。可以用影子模式预览决策，也可以随时暂停。 |
+| **交付有迹可查** | 可以核对当时的目标版本、Chief 的行动理由、分派记录和交付证据。完成和验证分别记录。 |
+
+**以每周研究简报为例。** 一个团队希望每周一收到一份有来源的简报。负责人指定允许使用的资料和成功标准。Chief 定期复查目标，可将来源核验和起草分派给研究部与编辑部。打开看板就能看到谁做了什么、结论来自哪里、还有什么需要人工复核。需要审批的动作会等待负责人决定。
 
 ## 下载
 
-**v0.4.0** 提供内置 DSH 的桌面版，以及可装到现有 **DSH 0.2.2-rc.2** 的插件。BotOrgHQ 集成 **DS Bot 0.3.1** 的原生会话、交接、群聊和记忆能力。
+桌面应用内置 **DeepSeek Harness 0.2.2-rc.2**，并集成 **DS Bot 0.3.1**。已有 DSH 的用户可以安装插件，使用同一套工作台。
 
-| 系统 | v0.4.0 下载 |
+| 平台 | 在 [GitHub Releases](https://github.com/xtshanlei/BotOrgHQ/releases) 中选择 |
 | --- | --- |
-| macOS · Apple 芯片 | [下载 ZIP](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/BotOrgHQ-0.4.0-mac-arm64.zip) |
-| macOS · Intel 芯片 | [下载 ZIP](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/BotOrgHQ-0.4.0-mac-x64.zip) |
-| Windows · x64 | [下载安装程序](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/BotOrgHQ-0.4.0-win-x64.exe) |
-| 已有 DSH | [下载插件](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/bot-org-hq-0.4.0.tgz) |
+| macOS · Apple 芯片 | `BotOrgHQ-…-mac-arm64.zip` |
+| macOS · Intel 芯片 | `BotOrgHQ-…-mac-x64.zip` |
+| Windows · x64 | `BotOrgHQ-…-win-x64.exe` |
+| 已安装 DSH | `bot-org-hq-….tgz` |
 
-[发布说明](https://github.com/xtshanlei/BotOrgHQ/releases/tag/v0.4.0-desktop) · [SHA-256 校验文件](https://github.com/xtshanlei/BotOrgHQ/releases/download/v0.4.0-desktop/SHA256SUMS.txt) · [所有版本](https://github.com/xtshanlei/BotOrgHQ/releases)
+发布页提供 SHA-256 校验文件。macOS 预发行版采用 ad-hoc 签名，尚待 Apple 公证。Windows 安装器未签名。
 
-当前版本为预发行版。Mac 应用使用 ad-hoc 签名，尚未经过 Apple 公证。Windows 安装器尚未签名。
+## 快速开始
 
-## 快速上手
-
-1. **安装桌面版。** Mac 解压后将 BotOrgHQ.app 放入“应用程序”，Windows 运行 EXE 安装器。
-2. **建立公司。** 从左侧进入 **BotOrgHQ** 公司工作台，点击 **＋ 新建公司**，填写名称和职责，再用 **＋ 新建部门** 添加部门。
-3. **分派任务。** 配置 DSH 模型后，点击 **打开集团 Chief** 交代工作，在 **任务看板** 查看负责人、交付结果和验收标准。
-
-你可以给 Chief 这条指令：
-
-> 建立研究工作室，设立研究部和编辑部。聘用研究主管和分析师，让分析师向研究主管汇报。请主管在公司任务看板上分派一项证据整理工作，要求提交可追溯的来源、总结和验证记录。
+1. **启动并选择语言。** Mac 上解压后将应用移到「应用程序」，Windows 上运行安装器。在侧栏打开 **BotOrgHQ**，用 **Language / 语言** 选择 **English** 或 **简体中文**。设置与 DSH 共用，保存在用户配置中。工作台和桌面界面从 **v0.4.1** 开始支持切换。
+2. **建立团队。** 点击 **新建公司**，添加部门并配置 DSH 模型。打开 **集团 Chief**，让它创建 Bot 员工并设置汇报关系。
+3. **设立一个周期目标。** 在 **长期目标** 中录入可衡量的成功标准并授权，在 **触发器** 中设定复查时间。先在 **自治设置** 启用 **仅建议** 模式，检查 Chief 的规划。
+4. **跟进交付。** 准备就绪后，可配置 **监督执行** 或 **有界自治**，设定权限和预算。在 **主动活动** 查看决策、在 **人工审批** 处理请求，并到 **任务看板** 核对结果与证据。
 
 <details>
-<summary>安装到现有 DSH</summary>
+<summary>在现有 DSH 配置中安装插件</summary>
 
-在 **DSH Desktop 0.2.2-rc.2** 中打开 **Plugins → Add plugin**，输入下载的 `bot-org-hq-0.4.0.tgz` 的绝对路径，启用后从侧栏进入 BotOrgHQ。同一个 profile 若已启用原始 DS Bot 插件，先停用原入口。
+在 **DSH Desktop 0.2.2-rc.2** 中打开 **插件 → 添加插件**，输入下载包的绝对路径并启用，然后从侧栏打开 BotOrgHQ。如果该配置已启用原版 DS Bot 插件，先停用原版入口。
 
-DSH Web 使用 DSH CLI 和 pnpm：
+DSH Web 用户可通过 DSH CLI 和 pnpm 安装。将文件名替换成你下载的版本。
 
 ```sh
-dsh plugin --profile web add /absolute/path/bot-org-hq-0.4.0.tgz
+dsh plugin --profile web add /absolute/path/bot-org-hq-0.4.1.tgz
 dsh web
 ```
-
-各插件使用各自的数据目录。旧 BotOrgHQ v0.1 SQLite 和独立 DS Bot 名册仍需要单独导入。公司权限覆盖本插件的组织工具和任务看板。DS Bot 的团队共享记忆与团队设置沿用上游行为。
-
-</details>
-
-## 组织图与任务看板
-
-**查看团队。** 点击部门查看员工和直属汇报树，点击员工打开原生对话。工作状态指示灯反映 Bot 当前是否有任务在运行。
-
-**调整汇报关系。** 在工作台点击 **修改部门 / 直属关系**，选择员工、部门和直属上级。上级可以来自同一公司的其他部门。系统校验自我汇报、汇报循环和跨公司上级。调整组织保留 Bot 身份、会话和记忆。
-
-**追踪交付。** 人和 Bot 使用同一块持久化看板。任务卡记录负责人、预期结果、验收标准、实际结果、证据与变更历史。可引用链接、文件、对话或验证记录。系统检查必填信息，证据的真实性由审阅者确认。
-
-| 状态 | 含义 |
-| --- | --- |
-| To-do | 已记录，等待开始 |
-| In progress | 负责人已开始 |
-| Waiting | 等待审批、输入或其他依赖 |
-| Finished | 已填写实际结果和证据 |
-| Aborted | 已记录终止原因 |
-
-<details>
-<summary>Bot 工具、任务权限与并发编辑</summary>
-
-| 工具 | 用途 |
-| --- | --- |
-| `org_list` | 查看公司、部门、员工和汇报关系 |
-| `org_hire` | 创建原生 Bot 并记录所属部门和直属上级 |
-| `org_create_department` | 在授权的公司添加部门 |
-| `org_change_reporting` | 调整部门和直属关系 |
-| `org_task_list` | 查看公司任务、证据与编辑历史 |
-| `org_task_create` / `org_task_update` | 创建任务卡并更新负责人、状态、结果及证据 |
-| `org_delegate` | 建立任务卡并通过 DS Bot 原生交接发送给员工 |
-
-公司员工可阅读本公司看板、修改自己或直属下属的任务。Chief 和人类操作者可管理公司看板。Chief 或当前直属上级可使用 `org_change_reporting` 调整关系。旧版本的并发编辑会触发 revision 检查，提示重新读取。
 
 </details>
 
 ## 主动自治
 
-自治默认关闭。在 **长期目标** 中定义目标和验收标准，配置访问范围、预算与审批方式。可先用 **Suggest** 模式查看计划，再选择 **Supervised** 或 **Bounded Auto** 开放授权动作。
+自治默认关闭。本机 DSH 宿主运行时，系统可以复查目标、执行计划、处理触发事件。获得授权后，引擎使用你配置的 DSH 模型，在公司范围内进行有界分析和起草，并执行数据范围、工具权限、审批与预算规则。
 
-本机 DSH 宿主运行期间，Chief 可以按计划或订阅事件复查目标。主动模式使用已配置的模型，在公司范围内执行资料分析与草稿任务。**主动活动** 可查看执行过程和证据，**人工审批** 可核准待执行动作，**自治设置** 可暂停公司、部门或 Bot。
+```mermaid
+flowchart TD
+    event["到达计划时间或收到订阅事件"] --> review["Chief 复查已授权目标"]
+    review --> policy{"权限与审批"}
+    policy -->|需要审批| owner["负责人审核动作"]
+    owner -->|批准| work["员工在授权范围内执行"]
+    policy -->|允许执行| work
+    work --> evidence["结果和证据回到看板"]
+```
 
-[设置目标、触发器和审批](docs/proactive-user-guide.md) · [执行边界与架构](docs/proactive-architecture.md)
+[目标、触发器与审批指南](docs/proactive-user-guide.md) · [执行边界与架构（English）](docs/proactive-architecture.md)
 
-## 更新、备份和迁移
+## 更新与数据
 
-- **从 0.2.0 升级**时，请手动下载并安装 v0.4.0。从 0.3.0 起可使用 **帮助 → 检查更新…**，Mac 也可从 **BotOrgHQ** 菜单打开。
-- **应用内更新**会校验 SHA-256，停止 DSH 并备份资料后再安装。升级期间正在运行的任务会中断。新版本首次启动会在内核迁移前建立快照。组织数据 v1 迁移到 v2 时保留原始备份。
-- **迁移到另一台机器**时，从 **帮助 → 导出或导入数据…** 生成密码加密的 DSH 归档。导入的主动任务从暂停状态开始。备份内包括配置、凭据、组织、任务、对话、附件和记忆，请按原数据同样保护。
+- **原地升级。** v0.3.0 起可打开 **帮助 → 检查更新…**。macOS 的 **BotOrgHQ** 菜单也提供此命令。应用校验下载并在安装前备份 DSH 配置。安装期间运行中的任务会停止。v0.2.0 用户需手动下载安装包。
+- **迁移工作区。** 用 **帮助 → 导出或导入数据…** 创建加密归档，将公司、Bot、设置、对话、记忆和工作记录迁移到另一台机器。导入后，主动工作保持暂停。备份和归档可能包含凭证，请妥善保管。
 
-| 系统 | 默认数据目录 |
-| --- | --- |
-| macOS | `~/Library/Application Support/BotOrgHQ` |
-| Windows | `%APPDATA%/BotOrgHQ` |
-| Linux | `~/.config/BotOrgHQ` |
+[迁移与恢复指南](docs/proactive-migration.md) · [版本记录（English）](CHANGELOG.md)
 
-在 **帮助 → 打开数据目录** 查看实际位置。更新窗口中的 **打开备份文件夹** 可找到快照。Mac 更新会保留旧应用包副本。若之前为私有仓库更新保存了 GitHub Token，可在更新窗口的 **私有 GitHub 仓库访问** 中清除。
+## 开发与贡献
 
-[升级、加密迁移及回滚](docs/proactive-migration.md) · [变更记录](CHANGELOG.md)
-
-## 开发和发布
-
-使用 **Node.js 24.9+**，在目标操作系统和架构上打包。
+使用 **Node.js 24.9+**，在目标操作系统和架构上打包桌面应用。
 
 ```sh
 npm ci
@@ -118,8 +88,6 @@ npm --prefix desktop ci
 npm --prefix desktop run dist
 ```
 
-本地启动桌面版前，先运行 `npm --prefix desktop run prepare-runtime`，再运行 `npm --prefix desktop start`。打包后的内核和重启保留可通过 `node scripts/smoke-desktop.mjs` 检查。
+本机开发可先执行 `npm --prefix desktop run prepare-runtime`，再执行 `npm --prefix desktop start`。提交问题时，请附上版本、平台及复现步骤，并妥善保管凭证和用户归档。
 
-GitHub Actions 为 Windows x64、Mac arm64 和 Mac x64 构建并验证安装包。发布任务把安装包与插件上传至草稿，校验附件后再发布。升级版本时同步根目录与 `desktop` 下的版本号和 lockfile。提交问题时请附上版本、平台和复现步骤，避免附带凭证或完整资料归档。
-
-[上游集成与归属](docs/upstream.md) · [DS Bot Apache-2.0 许可证](third-party/DS-Bot-LICENSE) · [DS Bot NOTICE](third-party/DS-Bot-NOTICE)
+[上游集成与鸣谢（English）](docs/upstream.md) · [DS Bot Apache-2.0 许可证](third-party/DS-Bot-LICENSE) · [DS Bot 声明](third-party/DS-Bot-NOTICE)
