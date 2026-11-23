@@ -11,7 +11,7 @@ let browser;
 let page;
 try {
   const url = await engine.ready;
-  browser = await chromium.launch({ args: ['--no-sandbox'] });
+  browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH, args: ['--no-sandbox'] });
   page = await browser.newPage({ viewport: { width: 1450, height: 1000 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -26,9 +26,17 @@ try {
   const later = page.getByRole('button', { name: /^(Configure later|稍后配置)$/ });
   if (await later.first().isVisible()) await later.first().click();
   page.setDefaultTimeout(30_000);
-  const shortcut = page.getByRole('button', { name: 'BotOrgHQ', exact: true });
-  if (await shortcut.count()) await shortcut.first().click();
-  else await page.getByText('BotOrgHQ', { exact: true }).first().click();
+  async function openWorkbench() {
+    const language = page.locator('.bohq').getByRole('combobox', { name: /^(Language|语言)$/ });
+    if (await language.isVisible()) return language;
+    const shortcut = page.getByRole('button', { name: 'BotOrgHQ', exact: true });
+    if (await shortcut.count()) await shortcut.first().click();
+    else await page.getByText('BotOrgHQ', { exact: true }).first().click();
+    return language;
+  }
+  const language = await openWorkbench();
+  await language.selectOption('zh');
+  await page.getByLabel('语言', { exact: true }).waitFor();
   await page.getByRole('button', { name: '＋ 新建公司', exact: true }).click();
   await page.getByLabel('公司名称', { exact: true }).fill('UI Research Co');
   await page.getByRole('button', { name: '创建公司', exact: true }).click();
@@ -47,7 +55,7 @@ try {
   await page.getByLabel('实际结果', { exact: true }).fill('Report ready');
   await page.getByLabel('证据及其说明（链接、文件路径、对话或验证记录）', { exact: true }).fill('report.md references three sources');
   await page.getByRole('button', { name: '保存任务', exact: true }).click();
-  await page.getByRole('region', { name: 'Finished', exact: true }).getByText('Report ready', { exact: true }).waitFor();
+  await page.getByRole('region', { name: '已完成', exact: true }).getByText('Report ready', { exact: true }).waitFor();
   await page.getByRole('button', { name: '自治设置', exact: true }).click();
   await page.getByRole('heading', { name: '自治设置', exact: true }).waitFor();
   await page.locator('select[name=mode]').selectOption('SUGGEST');
@@ -65,9 +73,31 @@ try {
   await page.getByLabel('触发器名称', { exact: true }).fill('Periodic quality');
   await page.getByRole('button', { name: '添加触发器', exact: true }).click();
   await page.getByText('Periodic quality', { exact: true }).waitFor();
-  await page.screenshot({ path: process.env.RUNNER_TEMP + '/taskboard-verified.png', fullPage: true });
+  await page.getByRole('button', { name: '任务看板', exact: true }).click();
+  await page.getByRole('button', { name: '＋ 新建任务', exact: true }).click();
+  await page.getByLabel('任务名称', { exact: true }).fill('Unsaved draft');
+  await language.selectOption('en');
+  const draft = page.getByLabel('Task title', { exact: true });
+  await draft.waitFor();
+  assert.equal(await draft.inputValue(), 'Unsaved draft');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('region', { name: 'Finished', exact: true }).getByText('Report ready', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Long-term goals', exact: true }).click();
+  await page.getByText('Continuous quality', { exact: true }).waitFor();
+
+  // A fresh browser context prefers Chinese. The DSH profile's explicit preference wins.
+  await page.context().close();
+  page = await browser.newPage({ locale: 'zh-CN' });
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(url.href);
+  const persistedLanguage = await openWorkbench();
+  await persistedLanguage.waitFor();
+  assert.equal(await persistedLanguage.inputValue(), 'en');
+  await page.getByRole('button', { name: 'Task board', exact: true }).click();
+  await page.getByText('Report ready', { exact: true }).waitFor();
+  if (process.env.RUNNER_TEMP) await page.screenshot({ path: join(process.env.RUNNER_TEMP, 'taskboard-verified.png'), fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('Browser create company, department, task, finish with evidence, and five board columns passed.');
+  console.log('Company, department, task evidence, goal, trigger, bilingual labels, draft retention and DSH locale persistence passed.');
 } catch (error) {
   if (page && !page.isClosed()) console.log('Workspace screen at failure', (await page.locator('body').innerText()).slice(0, 6000));
   throw error;

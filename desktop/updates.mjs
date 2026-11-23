@@ -52,10 +52,11 @@ async function hashFile(path) {
 export class DesktopUpdates {
   constructor({ directory, version, platform = process.platform, arch = process.arch, token = () => '' }) {
     Object.assign(this, { directory, version, platform, arch, token });
-    this.state = { phase: 'idle', currentVersion: version, message: '检查是否有新的 BotOrgHQ 版本。' };
+    this.state = { phase: 'idle', currentVersion: version, message: "Check for a newer version of BotOrgHQ." };
   }
 
   set(patch) {
+    if (Object.hasOwn(patch, 'message')) delete this.state.messageValues;
     Object.assign(this.state, patch);
   }
 
@@ -75,7 +76,7 @@ export class DesktopUpdates {
       }
       if (!response.ok) {
         await response.body?.cancel();
-        if ([401, 403, 404].includes(response.status)) throw new Error('GitHub 无法访问此版本。私有仓库请在此窗口保存具有 Contents 读取权限的 GitHub Token，再重试。');
+        if ([401, 403, 404].includes(response.status)) throw new Error("GitHub could not access this release. For a private repository, save a GitHub token with Contents read permission and try again.");
         throw new Error(`Update server returned ${response.status}.`);
       }
       return response;
@@ -87,20 +88,20 @@ export class DesktopUpdates {
     if (['checking', 'downloading', 'installing'].includes(this.state.phase)) return;
     this.release = null;
     this.download = null;
-    this.set({ phase: 'checking', message: '正在检查 GitHub Releases…', version: null, progress: null });
+    this.set({ phase: 'checking', message: "Checking GitHub Releases…", version: null, progress: null });
     try {
       const response = await this.request(`${api}/releases?per_page=30`);
       const releases = await response.json();
       if (!Array.isArray(releases)) throw new Error('Invalid release feed.');
       this.release = selectRelease(releases, this.version, this.platform, this.arch);
-      this.set(this.release ? { phase: 'available', version: this.release.version, message: '发现新版本，可以在应用内下载。' } : { phase: 'current', message: '目前已是最新可用版本。' });
+      this.set(this.release ? { phase: 'available', version: this.release.version, message: "A new version is available to download." } : { phase: 'current', message: "You are on the latest available version." });
     } catch (error) { this.set({ phase: 'error', message: error.message }); }
   }
 
   async downloadUpdate() {
     if (!this.release || !['available', 'error', 'ready'].includes(this.state.phase)) return;
     this.download = null;
-    this.set({ phase: 'downloading', message: '正在下载并校验更新…', progress: 0 });
+    this.set({ phase: 'downloading', message: "Downloading and verifying the update…", progress: 0 });
     const { asset, checksums, version } = this.release;
     const partial = join(this.directory, `${asset.name}.${randomUUID()}.part`);
     let handle;
@@ -121,21 +122,21 @@ export class DesktopUpdates {
       await handle.sync();
       await handle.close();
       handle = null;
-      if (received !== asset.size || await hashFile(partial) !== expected) throw new Error('更新校验失败，请重新下载。');
+      if (received !== asset.size || await hashFile(partial) !== expected) throw new Error("Update verification failed. Download it again.");
       const file = join(this.directory, asset.name);
       await rm(file, { force: true });
       await rename(partial, file);
       this.download = { file, expected, version };
-      this.set({ phase: 'ready', progress: 100, message: '下载及 SHA-256 校验完成。安装前会停止任务并备份数据。' });
+      this.set({ phase: 'ready', progress: 100, message: "Download and SHA-256 verification complete. Tasks will stop and data will be backed up before installation." });
     } catch (error) { this.set({ phase: 'error', message: error.message }); }
     finally { await handle?.close(); await rm(partial, { force: true }); }
   }
 
   async prepareInstall(appPath) {
-    if (this.state.phase !== 'ready' || !this.download) throw new Error('先完成更新下载。');
-    if (await hashFile(this.download.file) !== this.download.expected) throw new Error('下载文件已更改，请重新下载。');
+    if (this.state.phase !== 'ready' || !this.download) throw new Error("Finish downloading the update first.");
+    if (await hashFile(this.download.file) !== this.download.expected) throw new Error("The downloaded file has changed. Download it again.");
     if (this.platform === 'win32') return { kind: 'windows', file: this.download.file };
-    if (!appPath.endsWith('.app') || appPath.includes('/AppTranslocation/')) throw new Error('请先把 BotOrgHQ 移到“应用程序”文件夹，再安装更新。');
+    if (!appPath.endsWith('.app') || appPath.includes('/AppTranslocation/')) throw new Error("Move BotOrgHQ to Applications before installing the update.");
     const staging = join(this.directory, `mac-${randomUUID()}`);
     await mkdir(staging, { mode: 0o700 });
     await run('/usr/bin/ditto', ['-x', '-k', this.download.file, staging]);
@@ -143,7 +144,7 @@ export class DesktopUpdates {
     const plist = join(source, 'Contents', 'Info.plist');
     const identity = await run('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleIdentifier', plist]);
     const bundleVersion = await run('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleShortVersionString', plist]);
-    if (identity.stdout.trim() !== 'io.github.xtshanlei.botorg-hq' || bundleVersion.stdout.trim() !== this.download.version) throw new Error('下载的应用标识或版本不匹配。');
+    if (identity.stdout.trim() !== 'io.github.xtshanlei.botorg-hq' || bundleVersion.stdout.trim() !== this.download.version) throw new Error("The downloaded app has an unexpected identity or version.");
     await run('/usr/bin/codesign', ['--verify', '--deep', '--strict', source]);
     const target = `${appPath}.update-${randomUUID()}`;
     const previous = `${appPath}.previous-${randomUUID()}`;

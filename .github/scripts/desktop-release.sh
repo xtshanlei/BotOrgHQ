@@ -32,23 +32,29 @@ case "$1" in
       download="$base/releases/download/$tag"
       gh release create "$tag" --draft --prerelease --target "$GITHUB_SHA" \
         --title "BotOrgHQ $version Desktop" --notes-file - <<EOF
-### 新功能
+### English
 
-- Chief 可按计划或事件推进授权目标、跨部门分派工作，并把结果和证据写回看板。
-- 主动自治默认关闭。工作台提供权限、预算、审批、紧急暂停和影子回放。
-- 桌面版可加密导出和导入本地 DSH 数据，包括配置、Bot、组织、对话、附件和记忆。导入保留目标机器原数据，并暂停导入的自治任务。
-- 内置 DeepSeek Harness 0.2.2-rc.2。应用内升级会在安装前备份现有数据。
+- Switch between English and Simplified Chinese in the BotOrgHQ workbench. The preference is shared with DSH and applies to the desktop menus, updates, and profile transfer.
+- The English and Chinese READMEs explain how a Chief Bot can pursue an authorised goal, delegate work, and deliver reviewable evidence.
+- To update in place, open **Help → Check for updates…**. The app backs up your DSH profile before installing.
 
-| 平台 | 下载 |
+### 简体中文
+
+- 在 BotOrgHQ 工作台切换英语与简体中文。偏好与 DSH 共用，桌面菜单、更新和数据迁移界面也会跟随切换。
+- 中英文 README 详细介绍 Chief 如何持续推进授权目标、分派工作并交付可复核的证据。
+- 打开 **帮助 → 检查更新…** 执行原地升级。安装前，应用会备份 DSH 用户数据。
+
+| Platform / 平台 | Download / 下载 |
 | --- | --- |
-| Apple 芯片 Mac | [$apple]($download/$apple) |
-| Intel Mac | [$intel]($download/$intel) |
-| Windows x64 | [$windows]($download/$windows) |
-| DSH 插件 | [$plugin]($download/$plugin) |
+| macOS · Apple Silicon | [$apple]($download/$apple) |
+| macOS · Intel | [$intel]($download/$intel) |
+| Windows · x64 | [$windows]($download/$windows) |
+| DSH plugin / 插件 | [$plugin]($download/$plugin) |
 
-macOS 应用使用 ad-hoc 签名，尚未公证。Windows 安装器未签名。
+The macOS app is ad-hoc signed and has not been notarised. The Windows installer is unsigned.
+macOS 应用采用 ad-hoc 签名，尚未公证。Windows 安装器未签名。
 
-[SHA-256 校验]($download/SHA256SUMS.txt) · [使用说明]($base/blob/$tag/docs/proactive-user-guide.md) · [迁移与恢复]($base/blob/$tag/docs/proactive-migration.md)
+[SHA-256]($download/SHA256SUMS.txt) · [English README]($base/blob/$tag/README.md) · [中文使用说明]($base/blob/$tag/README.zh-CN.md)
 EOF
     fi
     printf 'build=true\n' >> "$GITHUB_OUTPUT"
