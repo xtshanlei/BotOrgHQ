@@ -16,17 +16,17 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(url.href);
-  await page.waitForTimeout(2500);
-  const notice = page.getByRole('button', { name: /^(Continue|继续)$/ });
-  if (await notice.first().isVisible()) await notice.first().click();
-  await page.waitForTimeout(500);
-  await page.keyboard.press('Escape');
-  const close = page.getByRole('button', { name: /^(Close|关闭)( dialog|对话框)?$/i });
-  if (await close.first().isVisible()) await close.first().click();
-  const later = page.getByRole('button', { name: /^(Configure later|稍后配置)$/ });
-  if (await later.first().isVisible()) await later.first().click();
-  page.setDefaultTimeout(30_000);
   async function openWorkbench() {
+    await page.waitForTimeout(2500);
+    const notice = page.getByRole('button', { name: /^(Continue|继续)$/ });
+    if (await notice.first().isVisible()) await notice.first().click();
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Escape');
+    const close = page.getByRole('button', { name: /^(Close|关闭)( dialog|对话框)?$/i });
+    if (await close.first().isVisible()) await close.first().click();
+    const later = page.getByRole('button', { name: /^(Configure later|稍后配置)$/ });
+    if (await later.first().isVisible()) await later.first().click();
+    page.setDefaultTimeout(30_000);
     const language = page.locator('.bohq').getByRole('combobox', { name: /^(Language|语言)$/ });
     if (await language.isVisible()) return language;
     const shortcut = page.getByRole('button', { name: 'BotOrgHQ', exact: true });
