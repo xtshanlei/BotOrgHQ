@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import styles from './client.css';
 import { workbenchLocale } from './messages.mjs';
 import { ProactivePanel, proactiveTabs } from './proactive-panel.jsx';
@@ -254,9 +254,10 @@ function OrganisationPanel({ openSession }) {
 
 function LanguagePicker() {
   const { active, t, setLocale } = useTranslation();
+  const labelId = useId();
   const [error, setError] = useState(false);
   return <div>
-    <label>{t('Language')}<select value={active} onChange={event => {
+    <label><span id={labelId}>{t('Language')}</span><select aria-labelledby={labelId} value={active} onChange={event => {
       try { setLocale(event.target.value); setError(false); }
       catch { setError(true); }
     }}>

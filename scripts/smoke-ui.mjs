@@ -36,7 +36,7 @@ try {
   }
   const language = await openWorkbench();
   await language.selectOption('zh');
-  await page.getByLabel('语言', { exact: true }).waitFor();
+  await page.getByRole('combobox', { name: '语言', exact: true }).waitFor();
   await page.getByRole('button', { name: '＋ 新建公司', exact: true }).click();
   await page.getByLabel('公司名称', { exact: true }).fill('UI Research Co');
   await page.getByRole('button', { name: '创建公司', exact: true }).click();
@@ -91,9 +91,8 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(url.href);
   const persistedLanguage = await openWorkbench();
-  await persistedLanguage.waitFor();
-  assert.equal(await persistedLanguage.inputValue(), 'en');
   await page.getByRole('button', { name: 'Task board', exact: true }).click();
+  assert.equal(await persistedLanguage.inputValue(), 'en');
   await page.getByText('Report ready', { exact: true }).waitFor();
   if (process.env.RUNNER_TEMP) await page.screenshot({ path: join(process.env.RUNNER_TEMP, 'taskboard-verified.png'), fullPage: true });
   assert.deepEqual(errors, []);
